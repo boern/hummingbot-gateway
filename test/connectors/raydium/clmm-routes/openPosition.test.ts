@@ -48,7 +48,7 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../../../src/connectors/raydium/clmm-routes/openPosition');
+  const { openPositionRoute } = await import('../../../../src/connectors/raydium/clmm-routes/openPosition.js');
   await server.register(openPositionRoute);
   return server;
 };

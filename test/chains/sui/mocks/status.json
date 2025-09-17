@@ -1,0 +1,11 @@
+{
+  "network": "mainnet",
+  "isConnected": true,
+  "latestBlock": 12345,
+  "rpcUrl": "https://sui-mainnet-rpc.com",
+  "nativeCurrency": {
+    "name": "Sui",
+    "symbol": "SUI",
+    "decimals": 9
+  }
+}

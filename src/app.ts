@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 import fastifyRateLimit from '@fastify/rate-limit';
+import fastifySensible from '@fastify/sensible';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -15,8 +16,10 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Routes
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
+import { suiRoutes } from './chains/sui/sui.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
+import { bluefinRoutes } from './connectors/bluefin/bluefin.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -70,6 +73,10 @@ const swaggerOptions = {
         name: '/chain/ethereum',
         description: 'Ethereum and EVM-based chain endpoints',
       },
+      {
+        name: '/chain/sui',
+        description: 'Sui chain endpoints',
+      },
 
       // Connectors
       {
@@ -89,6 +96,7 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      { name: '/connector/bluefin', description: 'Bluefin connector endpoints' },
     ],
     components: {
       parameters: {
@@ -163,6 +171,9 @@ const configureGatewayServer = () => {
     },
   });
 
+  // Register Fastify Sensible
+  server.register(fastifySensible);
+
   // Register Swagger
   server.register(fastifySwagger, swaggerOptions);
 
@@ -215,6 +226,7 @@ const configureGatewayServer = () => {
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
+    app.register(suiRoutes, { prefix: '/chains/sui' });
 
     // Register DEX connector routes - organized by connector
 
@@ -239,6 +251,11 @@ const configureGatewayServer = () => {
 
     // 0x routes
     app.register(register0xRoutes);
+
+    // Bluefin routes
+    app.register(bluefinRoutes, {
+      prefix: '/connectors/bluefin',
+    });
   };
 
   // Register routes on main server

@@ -13,6 +13,10 @@ configurations:
     configurationPath: chains/solana.yml
     schemaPath: solana-chain-schema.json
 
+  $namespace sui:
+    configurationPath: chains/sui.yml
+    schemaPath: sui-schema.json
+
   # Ethereum networks
   $namespace ethereum-mainnet:
     configurationPath: chains/ethereum/mainnet.yml
@@ -59,6 +63,11 @@ configurations:
     configurationPath: chains/solana/devnet.yml
     schemaPath: solana-network-schema.json
 
+  # Sui networks
+  $namespace sui-mainnet:
+    configurationPath: chains/sui/mainnet.yml
+    schemaPath: sui-network-schema.json
+
   # Connectors
   $namespace uniswap:
     configurationPath: connectors/uniswap.yml
@@ -79,3 +88,7 @@ configurations:
   $namespace 0x:
     configurationPath: connectors/0x.yml
     schemaPath: 0x-schema.json
+
+  $namespace bluefin:
+    configurationPath: connectors/bluefin.yml
+    schemaPath: bluefin-schema.json

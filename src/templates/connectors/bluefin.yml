@@ -1,0 +1,15 @@
+# Connector configuration for Bluefin
+bluefin:
+  # TTL for cache in seconds
+  ttl: 30
+
+  # Default slippage tolerance for trades (e.g., 0.005 for 0.5%).
+  slippage: 0.005
+
+  # Estimated gas limit for transactions.
+  gasLimitEstimate: 3000000
+
+  # The following values are placeholders and should be updated with actual contract addresses for a specific network.
+  constantProductPoolFactory: ""
+  initCodeHash: ""
+  router: ""

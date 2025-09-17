@@ -228,6 +228,16 @@ export class TokenService {
         }
         break;
 
+      case SupportedChain.SUI:
+        try {
+          if (!/^0x[a-fA-F0-9]{64}$/.test(token.address)) {
+            throw new Error('Invalid Sui address format');
+          }
+        } catch (error) {
+          throw new Error(`Invalid Sui address: ${error.message}`);
+        }
+        break;
+
       default:
         throw new Error(`Unsupported chain for validation: ${chain}`);
     }

@@ -33,6 +33,7 @@ describe('Chain Routes', () => {
       const chainNames = data.chains.map((c: any) => c.chain);
       expect(chainNames).toContain('ethereum');
       expect(chainNames).toContain('solana');
+      expect(chainNames).toContain('sui');
 
       // Each chain should have networks array
       data.chains.forEach((chain: any) => {
@@ -50,6 +51,11 @@ describe('Chain Routes', () => {
       const solana = data.chains.find((c: any) => c.chain === 'solana');
       expect(solana.networks.length).toBeGreaterThan(0);
       expect(solana.networks).toContain('mainnet-beta');
+
+      // Verify sui networks
+      const sui = data.chains.find((c: any) => c.chain === 'sui');
+      expect(sui.networks.length).toBeGreaterThan(0);
+      expect(sui.networks).toContain('mainnet');
     });
   });
 });

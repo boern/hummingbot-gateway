@@ -1,0 +1,4 @@
+chain: sui
+network: mainnet
+nativeCurrency: SUI
+rpcURL: https://fullnode.mainnet.sui.io:443

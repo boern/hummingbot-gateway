@@ -1,0 +1,88 @@
+import { TickMath, ClmmPoolUtil } from '@firefly-exchange/library-sui';
+import { IPosition } from '@firefly-exchange/library-sui/spot';
+import { BN } from 'bn.js';
+import Decimal from 'decimal.js';
+import { FastifyInstance, FastifyRequest } from 'fastify';
+
+import { PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { logger } from '../../../services/logger';
+import { Bluefin } from '../bluefin';
+import { mainnet } from '../bluefin.config';
+import { BluefinCLMMGetPositionsOwnedRequest } from '../schemas';
+
+import { getPool } from './poolInfo';
+
+async function toGatewayPosition(position: IPosition, network: string): Promise<typeof PositionInfoSchema.static> {
+  const pool = await getPool(position.pool_id, network);
+
+  const lowerPrice = TickMath.tickIndexToPrice(position.lower_tick, pool.coin_a.decimals, pool.coin_b.decimals);
+  const upperPrice = TickMath.tickIndexToPrice(position.upper_tick, pool.coin_a.decimals, pool.coin_b.decimals);
+
+  const lowerSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.lower_tick);
+  const upperSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.upper_tick);
+
+  const coinAmounts = ClmmPoolUtil.getCoinAmountFromLiquidity(
+    new BN(position.liquidity),
+    new BN(pool.current_sqrt_price),
+    lowerSqrtPrice,
+    upperSqrtPrice,
+    false,
+  );
+
+  const price = TickMath.sqrtPriceX64ToPrice(
+    new BN(pool.current_sqrt_price),
+    pool.coin_a.decimals,
+    pool.coin_b.decimals,
+  );
+
+  return {
+    address: position.position_id,
+    poolAddress: position.pool_id,
+    baseTokenAddress: pool.coin_a.address,
+    quoteTokenAddress: pool.coin_b.address,
+    baseTokenAmount: new Decimal(coinAmounts.coinA.toString()).div(10 ** pool.coin_a.decimals).toNumber(),
+    quoteTokenAmount: new Decimal(coinAmounts.coinB.toString()).div(10 ** pool.coin_b.decimals).toNumber(),
+    baseFeeAmount: new Decimal(position.token_a_fee).div(10 ** pool.coin_a.decimals).toNumber(),
+    quoteFeeAmount: new Decimal(position.token_b_fee).div(10 ** pool.coin_b.decimals).toNumber(),
+    lowerBinId: position.lower_tick,
+    upperBinId: position.upper_tick,
+    lowerPrice: lowerPrice.toNumber(),
+    upperPrice: upperPrice.toNumber(),
+    price: price.toNumber(),
+  };
+}
+
+export const positionsOwnedRoute = async (fastify: FastifyInstance) => {
+  fastify.get(
+    '/positions-owned',
+    {
+      schema: {
+        description: 'Get owned Bluefin CLMM positions for a wallet address',
+        tags: ['/connector/bluefin'],
+        querystring: BluefinCLMMGetPositionsOwnedRequest,
+        response: {
+          200: PositionInfoSchema,
+        },
+      },
+    },
+    async (req: FastifyRequest<{ Querystring: BluefinCLMMGetPositionsOwnedRequest }>, reply) => {
+      try {
+        const { walletAddress, poolAddress, network = 'mainnet' } = req.query;
+        const bluefin = Bluefin.getInstance(network);
+        const allPositions = await bluefin.query.getUserPositions(
+          mainnet.BasePackage, // BasePackage is same for mainnet and testnet
+          walletAddress,
+        );
+        const filteredPositions = allPositions.filter((p) => p.pool_id === poolAddress);
+        const positions = await Promise.all(filteredPositions.map((p) => toGatewayPosition(p, network)));
+        reply.send(positions);
+      } catch (e) {
+        if (e instanceof Error) {
+          logger.error(e.message);
+          throw fastify.httpErrors.internalServerError(e.message);
+        }
+        throw e;
+      }
+    },
+  );
+};

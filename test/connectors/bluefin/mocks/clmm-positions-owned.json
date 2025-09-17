@@ -1,0 +1,17 @@
+[
+  {
+    "address": "0x123456789abcdef",
+    "poolAddress": "0xa701a909673dbc597e63b4586ace6643c02ac0e118382a78b9a21262a4a2e35d",
+    "baseTokenAddress": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+    "quoteTokenAddress": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+    "baseTokenAmount": 10.5,
+    "quoteTokenAmount": 18.9,
+    "baseFeeAmount": 0.01,
+    "quoteFeeAmount": 0.018,
+    "lowerBinId": 79000,
+    "upperBinId": 81000,
+    "lowerPrice": 1.75,
+    "upperPrice": 1.85,
+    "price": 1.8
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bluefin Connector Configuration",
+  "description": "Schema for Bluefin connector settings.",
+  "type": "object",
+  "properties": {
+    "bluefin": {
+      "type": "object",
+      "properties": {
+        "ttl": {
+          "type": "number",
+          "description": "Time to live for quotes in milliseconds.",
+          "default": 3600000
+        },
+        "gasLimitEstimate": {
+          "type": "number",
+          "description": "Estimated gas limit for transactions.",
+          "default": 3000000
+        },
+        "slippage": {
+          "type": "number",
+          "description": "Default slippage tolerance for trades (e.g., 0.005 for 0.5%).",
+          "default": 0.005
+        },
+        "constantProductPoolFactory": {
+          "type": "string",
+          "description": "Address of the constant product pool factory.",
+          "default": ""
+        },
+        "initCodeHash": {
+          "type": "string",
+          "description": "Init code hash for pool address calculation.",
+          "default": ""
+        },
+        "router": {
+          "type": "string",
+          "description": "Address of the router contract.",
+          "default": ""
+        }
+      },
+      "required": ["ttl", "gasLimitEstimate", "slippage", "constantProductPoolFactory", "initCodeHash", "router"]
+    }
+  },
+  "required": ["bluefin"]
+}

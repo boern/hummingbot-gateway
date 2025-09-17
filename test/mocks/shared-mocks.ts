@@ -24,6 +24,11 @@ export const mockConfigStorage: Record<string, any> = {
   'solana-mainnet-beta.nativeCurrencySymbol': 'SOL',
   'solana-devnet.nodeURL': 'https://api.devnet.solana.com',
   'solana-devnet.nativeCurrencySymbol': 'SOL',
+  // Sui configurations
+  'sui.defaultNetwork': 'mainnet',
+  'sui.defaultWallet': '0x123',
+  'sui-mainnet.nodeURL': 'https://sui-mainnet-rpc.com',
+  'sui-mainnet.nativeCurrencySymbol': 'SUI',
   // Ethereum configurations
   'ethereum-mainnet.nodeURL': 'https://mainnet.infura.io/v3/test',
   'ethereum-mainnet.nativeCurrencySymbol': 'ETH',
@@ -52,6 +57,8 @@ export const mockConfigManagerV2 = {
       'ethereum-goerli': {},
       'solana-mainnet-beta': {},
       'solana-devnet': {},
+      'sui-mainnet': {},
+      sui: {},
       uniswap: {},
       jupiter: {},
       meteora: {},
