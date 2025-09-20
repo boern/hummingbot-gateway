@@ -84,11 +84,14 @@ export class PoolService {
   private getChainForConnector(connector: string): SupportedChain {
     const solanaConnectors = ['raydium', 'meteora'];
     const ethereumConnectors = ['uniswap'];
+    const suiConnectors = ['bluefin'];
 
     if (solanaConnectors.includes(connector)) {
       return SupportedChain.SOLANA;
     } else if (ethereumConnectors.includes(connector)) {
       return SupportedChain.ETHEREUM;
+    } else if (suiConnectors.includes(connector)) {
+      return SupportedChain.SUI;
     } else {
       throw new Error(`Unknown connector: ${connector}`);
     }
@@ -271,6 +274,11 @@ export class PoolService {
       // Validate Ethereum address
       if (!ethers.utils.isAddress(pool.address)) {
         throw new Error('Invalid Ethereum pool address');
+      }
+    } else if (chain === SupportedChain.SUI) {
+      // Validate Sui address (basic format check)
+      if (!/^0x[a-fA-F0-9]{64}$/.test(pool.address)) {
+        throw new Error('Invalid Sui pool address');
       }
     }
   }

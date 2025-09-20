@@ -1,3 +1,5 @@
+import { Bluefin } from '#src/connectors/bluefin/bluefin.js';
+
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Sui } from '../chains/sui/sui';
@@ -73,8 +75,8 @@ export async function getConnector(
     const { Meteora } = await import('../connectors/meteora/meteora');
     return await Meteora.getInstance(network);
   } else if (connector === 'bluefin') {
-    const { Meteora } = await import('../connectors/bluefin/bluefin');
-    return await Meteora.getInstance(network);
+    const { Bluefin } = await import('../connectors/bluefin/bluefin');
+    return await Bluefin.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');
   }

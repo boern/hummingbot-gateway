@@ -3,8 +3,8 @@ import { Type } from '@sinclair/typebox';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, bluefin)',
+    examples: ['raydium', 'meteora', 'uniswap', 'bluefin'],
   }),
   network: Type.Optional(
     Type.String({
@@ -38,8 +38,8 @@ export const PoolListResponseSchema = Type.Array(
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, bluefin)',
+    examples: ['raydium', 'meteora', 'uniswap', 'bluefin'],
   }),
   type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
     description: 'Pool type',

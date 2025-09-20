@@ -31,8 +31,8 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: Type.Object({
           connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap)',
-            examples: ['raydium', 'meteora', 'uniswap'],
+            description: 'Connector (raydium, meteora, uniswap, bluefin)',
+            examples: ['raydium', 'meteora', 'uniswap', 'bluefin'],
           }),
           network: Type.String({
             description: 'Network name (mainnet, mainnet-beta, etc)',
