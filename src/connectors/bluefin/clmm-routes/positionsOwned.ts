@@ -1,5 +1,6 @@
 import { TickMath, ClmmPoolUtil } from '@firefly-exchange/library-sui';
-import { IPosition } from '@firefly-exchange/library-sui/spot';
+import { IPosition, Pool } from '@firefly-exchange/library-sui/spot';
+import { Type } from '@sinclair/typebox';
 import { BN } from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyInstance, FastifyRequest } from 'fastify';
@@ -7,17 +8,20 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Bluefin } from '../bluefin';
-import { mainnet } from '../bluefin.config';
+import { bluefin_spot_contracts_mainnet, bluefin_spot_contracts_testnet } from '../bluefin.config';
 import { BluefinCLMMGetPositionsOwnedRequest } from '../schemas';
 
 import { getPool } from './poolInfo';
 
-async function toGatewayPosition(position: IPosition, network: string): Promise<typeof PositionInfoSchema.static> {
-  const pool = await getPool(position.pool_id, network);
+export async function toGatewayPosition(position: IPosition, network: string): Promise<typeof PositionInfoSchema.static> { // eslint-disable-line
+  const pool: Pool = await getPool(position.pool_id, network);
 
+  // Calculate the human-readable price for the lower and upper ticks.
+  // The price is expressed in terms of the quote token (coin_b) per one unit of the base token (coin_a).
   const lowerPrice = TickMath.tickIndexToPrice(position.lower_tick, pool.coin_a.decimals, pool.coin_b.decimals);
   const upperPrice = TickMath.tickIndexToPrice(position.upper_tick, pool.coin_a.decimals, pool.coin_b.decimals);
 
+  // Convert tick indices to their corresponding sqrtPriceX64 values for liquidity calculations.
   const lowerSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.lower_tick);
   const upperSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.upper_tick);
 
@@ -61,7 +65,7 @@ export const positionsOwnedRoute = async (fastify: FastifyInstance) => {
         tags: ['/connector/bluefin'],
         querystring: BluefinCLMMGetPositionsOwnedRequest,
         response: {
-          200: PositionInfoSchema,
+          200: Type.Array(PositionInfoSchema),
         },
       },
     },
@@ -69,8 +73,10 @@ export const positionsOwnedRoute = async (fastify: FastifyInstance) => {
       try {
         const { walletAddress, poolAddress, network = 'mainnet' } = req.query;
         const bluefin = Bluefin.getInstance(network);
+        const bluefin_spot_contracts =
+          network === 'mainnet' ? bluefin_spot_contracts_mainnet : bluefin_spot_contracts_testnet;
         const allPositions = await bluefin.query.getUserPositions(
-          mainnet.BasePackage, // BasePackage is same for mainnet and testnet
+          bluefin_spot_contracts.BasePackage, // BasePackage is same for mainnet and testnet
           walletAddress,
         );
         const filteredPositions = allPositions.filter((p) => p.pool_id === poolAddress);

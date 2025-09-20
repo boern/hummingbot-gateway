@@ -44,28 +44,29 @@ export const mockConfigStorage: Record<string, any> = {
   'uniswap.ttl': 300,
 };
 
+export const mockConfigNamespace = {
+  set: jest.fn(),
+  get: jest.fn(),
+  configuration: {},
+};
+
 export const mockConfigManagerV2 = {
-  getInstance: jest.fn().mockReturnValue({
-    get: jest.fn().mockImplementation((key: string) => mockConfigStorage[key]),
-    set: jest.fn().mockImplementation((key: string, value: any) => {
-      mockConfigStorage[key] = value;
-    }),
-    getNamespace: jest.fn(),
-    namespaces: {
-      server: {},
-      'ethereum-mainnet': {},
-      'ethereum-goerli': {},
-      'solana-mainnet-beta': {},
-      'solana-devnet': {},
-      'sui-mainnet': {},
-      sui: {},
-      uniswap: {},
-      jupiter: {},
-      meteora: {},
-      raydium: {},
-    },
-    allConfigurations: mockConfigStorage,
+  getInstance: jest.fn(), // This will be mocked in tests to return the object itself
+  get: jest.fn().mockImplementation((key: string) => mockConfigStorage[key]),
+  set: jest.fn((key: string, value: any) => {
+    // In tests, we can check if this was called.
+    // For more complex behavior, we can mock its implementation.
+    mockConfigNamespace.set(key, value);
   }),
+  getNamespace: jest.fn(),
+  unpackFullConfigPath: jest.fn(), // Add this mock function
+  namespaces: {
+    server: {},
+    'ethereum-mainnet': {},
+    'solana-mainnet-beta': {},
+    sui: {},
+  },
+  allConfigurations: mockConfigStorage,
 };
 
 // Fastify httpErrors mock factory

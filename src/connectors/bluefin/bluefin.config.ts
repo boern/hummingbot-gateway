@@ -1,8 +1,8 @@
 import { getSuiNetworkConfig } from '../../chains/sui/sui.config';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
+// import { ConfigManagerV2 } from '../../services/config-manager-v2';
 // import { IBluefinSpotContracts } from '@firefly-exchange/library-sui/spot';
 
-export const mainnet = {
+export const bluefin_spot_contracts_mainnet = {
   GlobalConfig: '0x03db251ba509a8d5d8777b6338836082335d93eecbdd09a11e190a1cff51c352',
   ProtocolFeeCap: '0x55697473304e901372020f30228526c4e93558b23259d90bc6fdddedf83295d2',
   Display: '0x5f34ee74e113d74ae9546695af6e6d0fde51731fe8d9a71309f8e66b725d54ab',
@@ -17,7 +17,7 @@ export const mainnet = {
   Pools: [], // Pools are fetched dynamically, so this can be empty
 };
 
-export const testnet = {
+export const bluefin_spot_contracts_testnet = {
   GlobalConfig: '',
   ProtocolFeeCap: '',
   Display: '',
@@ -31,9 +31,15 @@ export const testnet = {
 };
 
 export namespace BluefinConfig {
-  export const config = {
-    ...ConfigManagerV2.getInstance().get('bluefin'),
-  };
+  // export const config = {
+  //   ...ConfigManagerV2.getInstance().get('bluefin')
+  // };
+
+  // Supported networks for blueinf
+  export const chain = 'sui';
+
+  // Supported trading types
+  export const tradingTypes = ['clmm'] as const;
 
   export const getSuiConfig = (network: string) => {
     const suiConfig = getSuiNetworkConfig(network);

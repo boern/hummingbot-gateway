@@ -2,8 +2,8 @@ import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../../src/app';
 import { Bluefin } from '../../../../src/connectors/bluefin/bluefin';
-import clmmPositionsOwned from '../mocks/bluefin-clmm-pool-positionOwned.json';
-import expectedPositionsOwned from '../mocks/bluefin-clmm-positions-owned-wal-usdc.json';
+import expectedPositionInfo from '../mocks/bluefin-clmm-positionDetail-wal-usdc.json';
+import mockPositionDetails from '../mocks/bluefin-clmm-positionDetails.json';
 
 let app: FastifyInstance;
 beforeAll(async () => {
@@ -15,15 +15,13 @@ afterAll(() => {
   app.close();
 });
 
-describe('GET /connectors/bluefin/clmm/positions-owned', () => {
-  const poolAddress = '0xbcc6909d2e85c06cf9cbfe5b292da36f5bfa0f314806474bbf6a0bf9744d37ce';
-  const walletAddress = '0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272';
+describe('GET /connectors/bluefin/clmm/position-info', () => {
+  const positionAddress = '0xd13d312ec4a31b2ef873568bf8115ea4bb381583a226bfb20cbd60ce1abb7844';
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // Mock the Bluefin SDK calls
   const mockBluefin = {
     query: {
-      getUserPositions: jest.fn(),
+      getPositionDetails: jest.fn(),
       getPool: jest.fn(),
     },
   };
@@ -31,27 +29,26 @@ describe('GET /connectors/bluefin/clmm/positions-owned', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // Mock the Bluefin.getInstance method to return our mock instance
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     jest.spyOn(Bluefin, 'getInstance').mockReturnValue(mockBluefin as any);
   });
 
-  it('should return owned positions for a given wallet and pool', async () => {
+  it('should return position info for a given position address', async () => {
     // Arrange: Setup mock responses from the Bluefin SDK
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockSdkPool: any = require('../mocks/clmm-pool-info.json');
 
-    mockBluefin.query.getUserPositions.mockResolvedValue(clmmPositionsOwned);
+    mockBluefin.query.getPositionDetails.mockResolvedValue(mockPositionDetails);
     mockBluefin.query.getPool.mockResolvedValue(mockSdkPool);
 
     // Act: Make the API request
     const response = await app.inject({
       method: 'GET',
-      url: '/connectors/bluefin/clmm/positions-owned',
+      url: '/connectors/bluefin/clmm/position-info',
       query: {
         network: 'mainnet',
-        walletAddress: walletAddress,
-        poolAddress: poolAddress,
+        positionAddress: positionAddress,
       },
     });
 
@@ -59,8 +56,12 @@ describe('GET /connectors/bluefin/clmm/positions-owned', () => {
     expect(response.statusCode).toBe(200);
     const responseBody = JSON.parse(response.body);
 
-    expect(responseBody).toEqual(expectedPositionsOwned);
-    expect(mockBluefin.query.getUserPositions).toHaveBeenCalledWith(expect.any(String), walletAddress);
-    expect(mockBluefin.query.getPool).toHaveBeenCalledWith(poolAddress);
+    // The expected position info is the first (and only) element of the array
+    console.log('Actual Response Body:', JSON.stringify(responseBody, null, 2));
+    console.log('Expected Position Info:', JSON.stringify(expectedPositionInfo, null, 2));
+    expect(responseBody).toEqual(expectedPositionInfo);
+
+    expect(mockBluefin.query.getPositionDetails).toHaveBeenCalledWith(positionAddress);
+    expect(mockBluefin.query.getPool).toHaveBeenCalledWith(mockPositionDetails.pool_id);
   });
 });

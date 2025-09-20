@@ -4,9 +4,12 @@ import { CoinBalance, SuiClient, SuiTransactionBlockResponse } from '@mysten/sui
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { fromBase64, isValidSuiAddress } from '@mysten/sui/utils';
 import { TokenInfo } from '@solana/spl-token-registry';
+import fse from 'fs-extra';
 
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
+import { getSafeWalletFilePath } from '../../wallet/utils';
 
 import { SuiNetworkConfig, getSuiNetworkConfig } from './sui.config';
 
@@ -29,9 +32,9 @@ export class Sui {
     this._chain = 'sui';
     this._network = network;
     this.config = getSuiNetworkConfig(network);
-    this._client = new SuiClient({ url: this.config.nodeURL });
-    this.rpcUrl = this.config.nodeURL;
-    this._nativeToken = this.config.nativeCurrencySymbol;
+    this._client = new SuiClient({ url: this.config.rpcURL });
+    this.rpcUrl = this.config.rpcURL;
+    this._nativeToken = this.config.nativeCurrency;
   }
 
   public static async getInstance(network: string): Promise<Sui> {
@@ -45,7 +48,7 @@ export class Sui {
 
   private async init(): Promise<void> {
     try {
-      logger.info(`Initializing Sui connector for network: ${this.network}, nodeURL: ${this.config.nodeURL}`);
+      logger.info(`Initializing Sui connector for network: ${this.network}, nodeURL: ${this.config.rpcURL}`);
       await this.loadTokens();
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -240,6 +243,35 @@ export class Sui {
     }
     logger.error(`Invalid Sui address: ${address}.`);
     throw new Error('Invalid Sui address');
+  }
+
+  async getWallet(address: string): Promise<Ed25519Keypair> {
+    try {
+      // Validate the address format first
+      const validatedAddress = Sui.validateAddress(address);
+
+      // Use the safe wallet file path utility to prevent path injection
+      const safeWalletPath = getSafeWalletFilePath('sui', validatedAddress);
+
+      // Read the wallet file using the safe path
+      const encryptedPrivateKey: string = await fse.readFile(safeWalletPath, 'utf8');
+
+      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!passphrase) {
+        throw new Error('missing passphrase');
+      }
+      const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+
+      return Ed25519Keypair.fromSecretKey(fromBase64(decrypted));
+    } catch (error) {
+      if (error.message.includes('Invalid Sui address')) {
+        throw error; // Re-throw validation errors
+      }
+      if (error.code === 'ENOENT') {
+        throw new Error(`Wallet not found for address: ${address}`);
+      }
+      throw error;
+    }
   }
 
   async encrypt(secret: string, password: string): Promise<string> {

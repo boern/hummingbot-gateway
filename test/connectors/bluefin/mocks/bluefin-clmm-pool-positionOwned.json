@@ -1,0 +1,15 @@
+[
+  {
+    "owner": "0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272",
+    "pool_id": "0xbcc6909d2e85c06cf9cbfe5b292da36f5bfa0f314806474bbf6a0bf9744d37ce",
+    "position_id": "0xd13d312ec4a31b2ef873568bf8115ea4bb381583a226bfb20cbd60ce1abb7844",
+    "lower_tick": -77530,
+    "upper_tick": -76930,
+    "liquidity": 299543600275,
+    "fee_growth_coin_a": 58032557500541784,
+    "fee_growth_coin_b": 16730379344743,
+    "fee_rate": 2000,
+    "token_a_fee": 0,
+    "token_b_fee": 0
+  }
+]

@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
+import { Sui } from '../../chains/sui/sui';
 import { updateDefaultWallet } from '../../config/utils';
 import { logger } from '../../services/logger';
 import {
@@ -54,6 +55,8 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
           validatedAddress = Ethereum.validateAddress(address);
         } else if (chain.toLowerCase() === 'solana') {
           validatedAddress = Solana.validateAddress(address);
+        } else if (chain.toLowerCase() === 'sui') {
+          validatedAddress = Sui.validateAddress(address);
         } else {
           throw new Error(`Unsupported chain: ${chain}`);
         }

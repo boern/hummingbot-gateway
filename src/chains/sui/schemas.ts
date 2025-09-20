@@ -38,7 +38,7 @@ export const SuiBalanceRequest = Type.Object({
   tokens: Type.Optional(
     Type.Array(Type.String(), {
       description:
-        'A list of token symbols (SUI, USDC, USDT) or token mint addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SUI).',
+        'A list of token symbols (SUI, WAL, USDC). Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SUI).',
       examples: [EXAMPLE_TOKENS],
     }),
   ),

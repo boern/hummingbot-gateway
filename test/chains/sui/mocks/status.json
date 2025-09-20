@@ -2,7 +2,7 @@
   "network": "mainnet",
   "isConnected": true,
   "latestBlock": 12345,
-  "rpcUrl": "https://sui-mainnet-rpc.com",
+  "rpcUrl": "https://fullnode.mainnet.sui.io:443",
   "nativeCurrency": {
     "name": "Sui",
     "symbol": "SUI",

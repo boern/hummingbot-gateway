@@ -253,9 +253,7 @@ const configureGatewayServer = () => {
     app.register(register0xRoutes);
 
     // Bluefin routes
-    app.register(bluefinRoutes, {
-      prefix: '/connectors/bluefin',
-    });
+    app.register(bluefinRoutes.clmm, { prefix: '/connectors/bluefin/clmm' });
   };
 
   // Register routes on main server

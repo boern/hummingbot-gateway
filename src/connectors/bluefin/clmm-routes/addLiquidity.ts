@@ -1,6 +1,8 @@
-import { ClmmPoolUtil, toBigNumberStr } from '@firefly-exchange/library-sui';
+import { ClmmPoolUtil, TickMath, toBigNumberStr } from '@firefly-exchange/library-sui';
+import { ILiquidityParams } from '@firefly-exchange/library-sui/spot';
 import { SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { BN } from 'bn.js';
+import Decimal from 'decimal.js';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 
 import { Sui } from '../../../chains/sui/sui';
@@ -26,51 +28,121 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
     },
     async (req: FastifyRequest<{ Body: BluefinCLMMAddLiquidityRequest }>, reply) => {
       try {
-        const { network = 'mainnet', walletAddress, positionId, amount0, amount1, slippage = 0.5 } = req.body;
+        const {
+          network = 'mainnet',
+          walletAddress,
+          positionAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct: slippage = 0.5,
+        } = req.body;
 
-        if (amount0 === undefined && amount1 === undefined) {
-          throw fastify.httpErrors.badRequest('Either amount0 or amount1 must be provided.');
+        if (baseTokenAmount === undefined && quoteTokenAmount === undefined) {
+          throw fastify.httpErrors.badRequest('Either baseTokenAmount or quoteTokenAmount must be provided.');
         }
 
+        const sui = await Sui.getInstance(network);
+        const keypair = await sui.getWallet(walletAddress);
         const bluefin = Bluefin.getInstance(network);
-        const onChain = bluefin.onChain;
+        const onChain = bluefin.onChain(keypair);
 
-        const position = await bluefin.query.getPositionDetails(positionId);
+        const position = await bluefin.query.getPositionDetails(positionAddress);
         const pool = await getPool(position.pool_id, network);
 
-        // The SDK's `estLiquidityAndCoinAmountFromOneAmounts` requires one amount.
-        // We will prioritize amount0 if both are provided.
-        const fix_amount_a = amount0 !== undefined;
-        const amount = fix_amount_a ? amount0! : amount1!;
-        const decimals = fix_amount_a ? pool.coin_a.decimals : pool.coin_b.decimals;
-
-        const coinAmountBN = new BN(toBigNumberStr(amount, decimals));
+        const amountABN = baseTokenAmount ? new BN(toBigNumberStr(baseTokenAmount, pool.coin_a.decimals)) : new BN(0);
+        const amountBBN = quoteTokenAmount ? new BN(toBigNumberStr(quoteTokenAmount, pool.coin_b.decimals)) : new BN(0);
 
         const curSqrtPrice = new BN(pool.current_sqrt_price);
-        const roundUp = true; // When adding liquidity, we want to round up to get the minimum liquidity for the input amount.
 
-        const liquidityInput = ClmmPoolUtil.estLiquidityAndCoinAmountFromOneAmounts(
+        const liquidityAmount = ClmmPoolUtil.estimateLiquidityFromCoinAmounts(
+          curSqrtPrice,
           position.lower_tick,
           position.upper_tick,
-          coinAmountBN,
-          fix_amount_a,
-          roundUp,
-          slippage,
-          curSqrtPrice,
+          { coinA: amountABN, coinB: amountBBN },
         );
 
-        const sui = Sui.getInstance(network);
-        const keypair = (sui as any).getWallet(walletAddress).keypair;
-        onChain.signerConfig.signer = keypair;
+        const lowerSqrtPriceBN = TickMath.tickIndexToSqrtPriceX64(position.lower_tick);
+        const upperSqrtPriceBN = TickMath.tickIndexToSqrtPriceX64(position.upper_tick);
+        const coinAmounts = ClmmPoolUtil.getCoinAmountFromLiquidity(
+          liquidityAmount,
+          curSqrtPrice,
+          lowerSqrtPriceBN,
+          upperSqrtPriceBN,
+          true,
+        );
 
-        const tx = await onChain.provideLiquidityWithFixedAmount(pool, positionId, liquidityInput);
+        const liquidityParams: ILiquidityParams = {
+          lowerPrice: TickMath.tickIndexToPrice(
+            position.lower_tick,
+            pool.coin_a.decimals,
+            pool.coin_b.decimals,
+          ).toNumber(),
+          upperPrice: TickMath.tickIndexToPrice(
+            position.upper_tick,
+            pool.coin_a.decimals,
+            pool.coin_b.decimals,
+          ).toNumber(),
+          lowerPriceX64: lowerSqrtPriceBN,
+          upperPriceX64: upperSqrtPriceBN,
+          lowerTick: position.lower_tick,
+          upperTick: position.upper_tick,
+          liquidity: liquidityAmount.toNumber(),
+          coinAmounts: coinAmounts,
+          minCoinAmounts: {
+            coinA: new BN(
+              new Decimal(coinAmounts.coinA.toString())
+                .mul(1 - slippage / 100)
+                .floor()
+                .toString(),
+            ),
+            coinB: new BN(
+              new Decimal(coinAmounts.coinB.toString())
+                .mul(1 - slippage / 100)
+                .floor()
+                .toString(),
+            ),
+          },
+        };
 
-        reply.send({
-          txHash: (tx as SuiTransactionBlockResponse).digest,
-          positionId: positionId,
-          amount0: liquidityInput.coinAmountA.toString(),
-          amount1: liquidityInput.coinAmountB.toString(),
-        });
+        const tx = await onChain.provideLiquidity(pool, positionAddress, liquidityParams);
+        const txResponse = tx as SuiTransactionBlockResponse;
+
+        if (txResponse.effects?.status.status === 'success') {
+          const txDetails = await sui.getTransactionBlock(txResponse.digest);
+
+          const fee = new Decimal(txDetails.effects.gasUsed.computationCost)
+            .add(txDetails.effects.gasUsed.storageCost)
+            .sub(txDetails.effects.gasUsed.storageRebate)
+            .div(1e9)
+            .toNumber();
+
+          const liquidityProvidedEvent = txDetails.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
+            ?.parsedJson as any;
+
+          reply.send({
+            signature: txResponse.digest,
+            status: 1, // CONFIRMED
+            data: {
+              fee: fee,
+              baseTokenAmountAdded: new Decimal(liquidityProvidedEvent.coin_a_amount)
+                .div(10 ** pool.coin_a.decimals)
+                .toNumber(),
+              quoteTokenAmountAdded: new Decimal(liquidityProvidedEvent.coin_b_amount)
+                .div(10 ** pool.coin_b.decimals)
+                .toNumber(),
+            },
+          });
+        } else if (txResponse.effects?.status.status === 'failure') {
+          logger.error(`Add liquidity failed for position ${positionAddress}: ${txResponse.effects.status.error}`);
+          throw fastify.httpErrors.internalServerError(
+            `Transaction to add liquidity failed: ${txResponse.effects.status.error}`,
+          );
+        } else {
+          reply.send({
+            signature: txResponse.digest,
+            status: 0, // PENDING
+          });
+        }
       } catch (e) {
         if (e instanceof Error) {
           logger.error(e.message);

@@ -3,8 +3,8 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { getAvailableSuiNetworks } from './sui.utils';
 
 export interface SuiNetworkConfig {
-  nodeURL: string;
-  nativeCurrencySymbol: string;
+  rpcURL: string;
+  nativeCurrency: string;
 }
 
 export interface SuiChainConfig {
@@ -18,8 +18,8 @@ export const networks = getAvailableSuiNetworks();
 export function getSuiNetworkConfig(network: string): SuiNetworkConfig {
   const namespaceId = `sui-${network}`;
   return {
-    nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
-    nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    rpcURL: ConfigManagerV2.getInstance().get(namespaceId + '.rpcURL'),
+    nativeCurrency: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrency'),
   };
 }
 

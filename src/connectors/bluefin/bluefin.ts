@@ -1,18 +1,18 @@
 import { OnChainCalls, QueryChain } from '@firefly-exchange/library-sui/spot';
 import { SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
-import { BluefinConfig, mainnet, testnet } from './bluefin.config';
+import { BluefinConfig, bluefin_spot_contracts_mainnet, bluefin_spot_contracts_testnet } from './bluefin.config';
 
 export class Bluefin {
   private static instances: Record<string, Bluefin> = {};
   private _sui: SuiClient;
   private _query: QueryChain;
-  private _onChain: OnChainCalls | null = null;
   private _network: string;
 
   private constructor(network: string) {
     const suiConfig = BluefinConfig.getSuiConfig(network);
-    this._sui = new SuiClient({ url: suiConfig.nodeURL });
+    this._sui = new SuiClient({ url: suiConfig.rpcURL });
     this._query = new QueryChain(this._sui);
     this._network = network;
   }
@@ -32,11 +32,9 @@ export class Bluefin {
     return this._query;
   }
 
-  public get onChain(): OnChainCalls {
-    if (!this._onChain) {
-      const config = this._network === 'mainnet' ? mainnet : testnet;
-      this._onChain = new OnChainCalls(this._sui, config);
-    }
-    return this._onChain;
+  public onChain(keypair?: Ed25519Keypair): OnChainCalls {
+    const config = this._network === 'mainnet' ? bluefin_spot_contracts_mainnet : bluefin_spot_contracts_testnet;
+    const signerOption = keypair ? { signer: keypair } : undefined;
+    return new OnChainCalls(this._sui, config, signerOption);
   }
 }

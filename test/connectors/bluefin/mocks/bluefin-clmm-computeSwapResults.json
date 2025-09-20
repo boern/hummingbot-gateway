@@ -1,0 +1,123 @@
+{
+  "effects": {
+    "messageVersion": "v1",
+    "status": {
+      "status": "success"
+    },
+    "executedEpoch": "891",
+    "gasUsed": {
+      "computationCost": "495000",
+      "storageCost": "988000",
+      "storageRebate": "0",
+      "nonRefundableStorageFee": "0"
+    },
+    "modifiedAtVersions": [
+      {
+        "objectId": "0xbf13e6bab94c9f74dff6f91f455e118d3a8b6faeb68e95d5b181326124516313",
+        "sequenceNumber": "1"
+      }
+    ],
+    "sharedObjects": [
+      {
+        "objectId": "0xbcc6909d2e85c06cf9cbfe5b292da36f5bfa0f314806474bbf6a0bf9744d37ce",
+        "version": 639024342,
+        "digest": "FTS4zyaMJXJVMhCbRidBoi2t8eubDTG6xLfR4zHRL9Ho"
+      }
+    ],
+    "transactionDigest": "yb4Wvm8trtEqnNZPkbtLbKNGpP38Ex4idgJwCaJjYZp",
+    "mutated": [
+      {
+        "owner": {
+          "AddressOwner": "0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272"
+        },
+        "reference": {
+          "objectId": "0xbf13e6bab94c9f74dff6f91f455e118d3a8b6faeb68e95d5b181326124516313",
+          "version": 639024343,
+          "digest": "8wVcQxxiWRAinT9RYb8JEbomcyFVmtyuj9QqqY4JNyhD"
+        }
+      }
+    ],
+    "gasObject": {
+      "owner": {
+        "AddressOwner": "0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272"
+      },
+      "reference": {
+        "objectId": "0xbf13e6bab94c9f74dff6f91f455e118d3a8b6faeb68e95d5b181326124516313",
+        "version": 639024343,
+        "digest": "8wVcQxxiWRAinT9RYb8JEbomcyFVmtyuj9QqqY4JNyhD"
+      }
+    },
+    "eventsDigest": "FTBwfGJif7KgcgjgcNkUcXYgZznxyKfHuuFLyMdoacSn",
+    "dependencies": [
+      "6bPW9egYjTda6xKq6UdCDPWMg9DGXfDNNiKZvqM2EDC8",
+      "7DkJSrf5sPWGxqHbH2X1wXwFcftRm6myhJJnuTJbaMYr",
+      "7mM5sRre7Mx6kRChEycj2iy2W4fQkhSHQTDixBk42nNR",
+      "G5GPD8K6UTrPys5mEtymDSGAbaj4eF1RNS7uT1X9bd3t"
+    ]
+  },
+  "events": [
+    {
+      "id": {
+        "txDigest": "yb4Wvm8trtEqnNZPkbtLbKNGpP38Ex4idgJwCaJjYZp",
+        "eventSeq": "0"
+      },
+      "packageId": "0x67b34b728c4e28e704dcfecf7c5cf55c7fc593b6c65c20d1836d97c209c1928a",
+      "transactionModule": "pool",
+      "sender": "0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272",
+      "type": "0x3492c874c1e3b3e2984e8c41b589e642d4d0a5d6459e5a9cfc2d52fd7c89c267::pool::SwapResult",
+      "parsedJson": {
+        "a2b": true,
+        "amount_calculated": "84198597",
+        "amount_specified": "200000000000",
+        "amount_specified_remaining": "0",
+        "by_amount_in": true,
+        "current_tick_index": {
+          "bits": 4294889583
+        },
+        "end_sqrt_price": "378871452503636223",
+        "fee_amount": "320000000",
+        "fee_growth_global": "65046481498394327250",
+        "is_exceed": false,
+        "liquidity": "994518772037721893",
+        "protocol_fee": "80000000",
+        "start_sqrt_price": "378871454065386519",
+        "starting_liquidity": "994518772037721893",
+        "step_results": [
+          {
+            "amount_in": "199600000000",
+            "amount_out": "84198597",
+            "fee_amount": "320000000",
+            "initialized": true,
+            "remaining_amount": "0",
+            "sqrt_price_next": "378867837472447679",
+            "sqrt_price_start": "378871454065386519",
+            "tick_index_next": {
+              "bits": 4294889583
+            }
+          }
+        ],
+        "steps": "1"
+      },
+      "bcsEncoding": "base64",
+      "bcs": "AQEA0O2QLgAAAAAAAAAAAAAAxcQEBQAAAADS+M+wSoazhgMAAAAAAAAAANASEwAAAAAAtMQEAAAAABdkGoOUBUIFAAAAAAAAAAD/+AMmlAVCBQAAAAAAAAAAb9D+/wAlH8TRjT3NDQAAAAAAAAAAJR/E0Y09zQ0AAAAAAAAAAAEAAAAAAAAAAW/Q/v8BF2Qag5QFQgUAAAAAAAAAAL+cXXVKAkIFAAAAAAAAAAAATBZ5LgAAAMXEBAUAAAAAANASEwAAAAAAAAAAAAAAAA=="
+    }
+  ],
+  "results": [
+    {
+      "returnValues": [
+        [
+          [
+            1, 1, 0, 208, 237, 144, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 197, 196, 4, 5, 0, 0, 0, 0, 210, 248, 207, 176,
+            74, 134, 179, 134, 3, 0, 0, 0, 0, 0, 0, 0, 0, 208, 18, 19, 0, 0, 0, 0, 0, 180, 196, 4, 0, 0, 0, 0, 23, 100,
+            26, 131, 148, 5, 66, 5, 0, 0, 0, 0, 0, 0, 0, 0, 255, 248, 3, 38, 148, 5, 66, 5, 0, 0, 0, 0, 0, 0, 0, 0, 111,
+            208, 254, 255, 0, 37, 31, 196, 209, 141, 61, 205, 13, 0, 0, 0, 0, 0, 0, 0, 0, 37, 31, 196, 209, 141, 61,
+            205, 13, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 111, 208, 254, 255, 1, 23, 100, 26, 131, 148, 5,
+            66, 5, 0, 0, 0, 0, 0, 0, 0, 0, 191, 156, 93, 117, 74, 2, 66, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 22, 121, 46,
+            0, 0, 0, 197, 196, 4, 5, 0, 0, 0, 0, 0, 208, 18, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+          ],
+          "0x3492c874c1e3b3e2984e8c41b589e642d4d0a5d6459e5a9cfc2d52fd7c89c267::pool::SwapResult"
+        ]
+      ]
+    }
+  ]
+}

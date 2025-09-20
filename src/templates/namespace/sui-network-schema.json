@@ -1,13 +1,27 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Sui Network Configuration",
-  "description": "Configuration for a specific Sui network",
+  "title": "Sui Chain Configuration",
+  "description": "Configuration for the Sui chain",
   "type": "object",
   "properties": {
+    "chain": {
+      "type": "string",
+      "description": "Chain name",
+      "enum": ["sui"]
+    },
+    "network": {
+      "type": "string",
+      "description": "Network name"
+    },
     "rpcURL": {
       "type": "string",
       "description": "RPC URL for the Sui network"
+    },
+    "nativeCurrency": {
+      "type": "string",
+      "description": "Native currency of the chain",
+      "enum": ["SUI"]
     }
   },
-  "required": ["rpcURL"]
+  "required": ["chain", "network", "rpcURL", "nativeCurrency"]
 }

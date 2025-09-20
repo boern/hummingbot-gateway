@@ -18,7 +18,7 @@ describe('Sui Status Route', () => {
 
     const mockSui = {
       getCurrentBlockNumber: jest.fn().mockResolvedValue(12345),
-      rpcUrl: 'https://sui-mainnet-rpc.com',
+      rpcUrl: 'https://fullnode.mainnet.sui.io:443',
       nativeTokenSymbol: 'SUI',
     };
 
@@ -40,7 +40,7 @@ describe('Sui Status Route', () => {
     expect(body.chain).toBe('sui');
     expect(body.network).toBe('mainnet');
     expect(body.currentBlockNumber).toBe(12345);
-    expect(body.rpcUrl).toBe('https://sui-mainnet-rpc.com');
+    expect(body.rpcUrl).toBe('https://fullnode.mainnet.sui.io:443');
     expect(body.nativeCurrency).toBe('SUI');
   });
 });

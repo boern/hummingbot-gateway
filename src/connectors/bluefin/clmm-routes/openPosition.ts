@@ -2,7 +2,7 @@ import { TickMath, ClmmPoolUtil, toBigNumberStr } from '@firefly-exchange/librar
 import { ILiquidityParams } from '@firefly-exchange/library-sui/spot';
 import { SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { BN } from 'bn.js';
-import Decimal from 'decimal.js';
+import Decimal, { Decimal as DecimalJS } from 'decimal.js';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 
 import { Sui } from '../../../chains/sui/sui';
@@ -34,20 +34,24 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
           poolAddress,
           lowerPrice,
           upperPrice,
-          amount0,
-          amount1,
-          slippage = 0.5,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct: slippage = 0.5,
         } = req.body;
 
-        if (amount0 === undefined && amount1 === undefined) {
-          throw fastify.httpErrors.badRequest('Either amount0 or amount1 must be provided.');
+        if (baseTokenAmount === undefined && quoteTokenAmount === undefined) {
+          throw fastify.httpErrors.badRequest('Either baseTokenAmount or quoteTokenAmount must be provided.');
+        }
+
+        if (lowerPrice >= upperPrice) {
+          throw fastify.httpErrors.badRequest('lowerPrice must be less than upperPrice.');
         }
 
         const bluefin = Bluefin.getInstance(network);
         const pool = await getPool(poolAddress, network);
 
-        const amount0BN = amount0 ? new BN(toBigNumberStr(amount0, pool.coin_a.decimals)) : new BN(0);
-        const amount1BN = amount1 ? new BN(toBigNumberStr(amount1, pool.coin_b.decimals)) : new BN(0);
+        const amountaBN = baseTokenAmount ? new BN(toBigNumberStr(baseTokenAmount, pool.coin_a.decimals)) : new BN(0);
+        const amountbBN = quoteTokenAmount ? new BN(toBigNumberStr(quoteTokenAmount, pool.coin_b.decimals)) : new BN(0);
 
         const lowerTick = TickMath.priceToInitializableTickIndex(
           new Decimal(lowerPrice),
@@ -65,8 +69,8 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
         const curSqrtPrice = new BN(pool.current_sqrt_price);
 
         const liquidityAmount = ClmmPoolUtil.estimateLiquidityFromCoinAmounts(curSqrtPrice, lowerTick, upperTick, {
-          coinA: amount0BN,
-          coinB: amount1BN,
+          coinA: amountaBN,
+          coinB: amountbBN,
         });
 
         const lowerSqrtPriceBN = TickMath.tickIndexToSqrtPriceX64(lowerTick);
@@ -104,17 +108,52 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
           },
         };
 
-        const sui = Sui.getInstance(network);
-        const keypair = (sui as any).getWallet(walletAddress).keypair;
-        const onChain = bluefin.onChain;
-        onChain.signerConfig.signer = keypair;
-
+        const sui = await Sui.getInstance(network);
+        const keypair = await sui.getWallet(walletAddress); // Use the standardized wallet retrieval
+        const onChain = bluefin.onChain(keypair);
         const tx = await onChain.openPositionWithLiquidity(pool, liquidityInput);
 
-        reply.send({
-          txHash: (tx as SuiTransactionBlockResponse).digest,
-          positionId: (tx as SuiTransactionBlockResponse).effects?.created?.[0]?.reference.objectId,
-        });
+        const txResponse = tx as SuiTransactionBlockResponse;
+
+        if (txResponse.effects?.status.status === 'success') {
+          // Fetch transaction details to provide a more complete response
+          const txDetails = await sui.getTransactionBlock(txResponse.digest);
+
+          const liquidityProvidedEvent = txDetails.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
+            ?.parsedJson as any;
+
+          const positionId = liquidityProvidedEvent?.position_id;
+
+          reply.send({
+            signature: txResponse.digest,
+            status: 1, // CONFIRMED
+            data: {
+              fee: new DecimalJS(txDetails.effects.gasUsed.computationCost)
+                .add(txDetails.effects.gasUsed.storageCost)
+                .sub(txDetails.effects.gasUsed.storageRebate)
+                .div(1e9)
+                .toNumber(),
+              positionAddress: positionId, // Sui model doesn't have explicit rent like Solana
+              positionRent: new DecimalJS(txDetails.effects.gasUsed.storageCost).div(1e9).toNumber(),
+              baseTokenAmountAdded: new Decimal(liquidityProvidedEvent.coin_a_amount)
+                .div(10 ** pool.coin_a.decimals)
+                .toNumber(),
+              quoteTokenAmountAdded: new Decimal(liquidityProvidedEvent.coin_b_amount)
+                .div(10 ** pool.coin_b.decimals)
+                .toNumber(),
+            },
+          });
+        } else if (txResponse.effects?.status.status === 'failure') {
+          logger.error(`Open position failed for pool ${poolAddress}: ${txResponse.effects.status.error}`);
+          throw fastify.httpErrors.internalServerError(
+            `Transaction to open position failed: ${txResponse.effects.status.error}`,
+          );
+        } else {
+          reply.send({
+            signature: txResponse.digest,
+            status: 0, // PENDING
+          });
+        }
       } catch (e) {
         if (e instanceof Error) {
           logger.error(e.message);

@@ -1,8 +1,9 @@
-import { Pool } from '@firefly-exchange/library-sui/spot';
+import { BN } from 'bn.js';
 import { FastifyInstance } from 'fastify';
 
 import { gatewayApp } from '../../../../src/app';
 import { Bluefin } from '../../../../src/connectors/bluefin/bluefin';
+import expectedPoolInfo from '../mocks/bluefin-clmm-pool-info-wal-usdc.json';
 
 let app: FastifyInstance;
 beforeAll(async () => {
@@ -15,9 +16,9 @@ afterAll(() => {
 });
 
 describe('Bluefin CLMM poolInfo', () => {
-  const poolAddress = '0xa701a909673dbc597e63b4586ace6643c02ac0e118382a78b9a21262a4a2e35d';
+  const poolAddress = '0xbcc6909d2e85c06cf9cbfe5b292da36f5bfa0f314806474bbf6a0bf9744d37ce';
 
-  // Mock the Bluefin SDK calls
+  // Mock the Bluefin SDK
   const mockBluefin = {
     query: {
       getPool: jest.fn(),
@@ -33,16 +34,7 @@ describe('Bluefin CLMM poolInfo', () => {
 
   it('should return pool information', async () => {
     // Arrange: Setup mock responses from the Bluefin SDK
-    const mockSdkPool: Partial<Pool> = {
-      id: poolAddress,
-      coin_a: { address: '0x2::sui::SUI', decimals: 9, balance: '2' },
-      coin_b: { address: '0x...usdc::USDC', decimals: 6, balance: '5' },
-      current_sqrt_price: '13546363633333333333333333333333', // Approx 1.8 price
-      current_tick: 80000,
-      ticks_manager: { tick_spacing: 20, bitmap: {}, ticks: {} },
-      fee_rate: 1000,
-    };
-
+    const mockSdkPool: any = require('../mocks/clmm-pool-info.json');
     mockBluefin.query.getPool.mockResolvedValue(mockSdkPool);
 
     // Act: Make the API request
@@ -54,12 +46,20 @@ describe('Bluefin CLMM poolInfo', () => {
         poolAddress: poolAddress,
       },
     });
+
     // Assert: Check the response
     expect(response.statusCode).toBe(200);
     const responseBody = JSON.parse(response.body);
-    expect(responseBody).toMatchSnapshot({});
 
-    // Ensure the mock was called with the correct parameters
+    // Log the actual and expected values for debugging
+    console.log('Actual Response Body:', JSON.stringify(responseBody, null, 2));
+    console.log('Expected Pool Info:', JSON.stringify(expectedPoolInfo, null, 2));
+
+    // Check if the response matches the expected structure and values
+    expect(responseBody).toEqual(expect.objectContaining(expectedPoolInfo));
+
+    // Verify that the mocked function was called with the correct parameters
+    expect(Bluefin.getInstance).toHaveBeenCalledWith('mainnet');
     expect(mockBluefin.query.getPool).toHaveBeenCalledWith(poolAddress);
   });
 });

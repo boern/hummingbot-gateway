@@ -13,6 +13,7 @@ export async function estimateGasSui(fastify: FastifyInstance, network: string):
     const gasPrice = await sui.getReferenceGasPrice();
 
     const fee = Number(gasPrice) * DEFAULT_COMPUTE_UNITS;
+    // Convert MIST to SUI（1 SUI = 10^9 MIST）
     const feeInSui = fee / 1e9; // Convert MIST to SUI
 
     return {
