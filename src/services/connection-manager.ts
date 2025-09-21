@@ -1,4 +1,4 @@
-import { Bluefin } from '#src/connectors/bluefin/bluefin.js';
+import { Bluefin } from '#src/connectors/bluefin/bluefin';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';

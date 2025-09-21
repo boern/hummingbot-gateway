@@ -21,7 +21,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "#src": ["src/index.ts"],
+      "#src": ["src"],
       "#src/*": ["src/*"],
       "#test": ["test"],
       "#test/*": ["test/*"]

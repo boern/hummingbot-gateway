@@ -39,7 +39,7 @@ describe('GET /connectors/bluefin/clmm/positions-owned', () => {
   it('should return owned positions for a given wallet and pool', async () => {
     // Arrange: Setup mock responses from the Bluefin SDK
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mockSdkPool: any = require('../mocks/clmm-pool-info.json');
+    const mockSdkPool: any = require('../mocks/bluefin-clmm-pool-info.json');
 
     mockBluefin.query.getUserPositions.mockResolvedValue(clmmPositionsOwned);
     mockBluefin.query.getPool.mockResolvedValue(mockSdkPool);

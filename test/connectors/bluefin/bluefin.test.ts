@@ -1,5 +1,15 @@
 import { Bluefin } from '../../../src/connectors/bluefin/bluefin';
 
+// Mock ConfigManagerV2 to provide necessary configuration for tests
+jest.mock('../../../src/services/config-manager-v2', () => {
+  const { mockConfigManagerV2 } = require('../../mocks/shared-mocks');
+  // Provide a basic sui config to prevent namespace errors
+  mockConfigManagerV2.get.mockImplementation((key: string) => {
+    if (key.startsWith('sui')) return {};
+  });
+  return { ConfigManagerV2: { getInstance: () => mockConfigManagerV2 } };
+});
+
 describe('Bluefin Connector', () => {
   it('should get a singleton instance for a given network', () => {
     const instance1 = Bluefin.getInstance('mainnet');

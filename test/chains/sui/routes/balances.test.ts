@@ -1,6 +1,3 @@
-import { mockConfigManagerV2 } from '../../../mocks/shared-mocks';
-jest.mock('../../../../src/services/config-manager-v2', () => ({ ConfigManagerV2: mockConfigManagerV2 }));
-
 import Fastify, { FastifyInstance } from 'fastify';
 
 import { Sui } from '../../../../src/chains/sui/sui';

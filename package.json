@@ -8,12 +8,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "imports": {
-    "#src": "./src/index.ts",
-    "#src/*": "./src/*",
-    "#test": "./test",
-    "#test/*": "./test/*"
-  },
   "scripts": {
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",

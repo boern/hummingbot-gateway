@@ -37,7 +37,7 @@ describe('GET /connectors/bluefin/clmm/position-info', () => {
   it('should return position info for a given position address', async () => {
     // Arrange: Setup mock responses from the Bluefin SDK
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mockSdkPool: any = require('../mocks/clmm-pool-info.json');
+    const mockSdkPool: any = require('../mocks/bluefin-clmm-pool-info.json');
 
     mockBluefin.query.getPositionDetails.mockResolvedValue(mockPositionDetails);
     mockBluefin.query.getPool.mockResolvedValue(mockSdkPool);

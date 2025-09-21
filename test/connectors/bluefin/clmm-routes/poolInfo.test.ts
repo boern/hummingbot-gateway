@@ -34,7 +34,7 @@ describe('Bluefin CLMM poolInfo', () => {
 
   it('should return pool information', async () => {
     // Arrange: Setup mock responses from the Bluefin SDK
-    const mockSdkPool: any = require('../mocks/clmm-pool-info.json');
+    const mockSdkPool: any = require('../mocks/bluefin-clmm-pool-info.json');
     mockBluefin.query.getPool.mockResolvedValue(mockSdkPool);
 
     // Act: Make the API request
