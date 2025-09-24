@@ -1,1 +1,4 @@
-rpcURL: https://fullnode.mainnet.sui.io:443
+chain: 'sui'
+network: 'mainnet'
+rpcURL: 'https://fullnode.mainnet.sui.io:443'
+nativeCurrency: 'SUI'

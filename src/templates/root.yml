@@ -15,7 +15,7 @@ configurations:
 
   $namespace sui:
     configurationPath: chains/sui.yml
-    schemaPath: sui-schema.json
+    schemaPath: sui-chain-schema.json
 
   # Ethereum networks
   $namespace ethereum-mainnet:
@@ -66,6 +66,10 @@ configurations:
   # Sui networks
   $namespace sui-mainnet:
     configurationPath: chains/sui/mainnet.yml
+    schemaPath: sui-network-schema.json
+
+  $namespace sui-testnet:
+    configurationPath: chains/sui/testnet.yml
     schemaPath: sui-network-schema.json
 
   # Connectors

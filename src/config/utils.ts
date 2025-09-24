@@ -42,7 +42,7 @@ export const getDefaultPools = async (
   network: string,
 ): Promise<Record<string, string>> => {
   // Import PoolService here to avoid circular dependency
-  const { PoolService } = await import('../services/pool-service');
+  const { PoolService } = await import('../services/pool-service.js');
 
   // Parse connector name to extract base connector and type
   const [baseConnector, poolType] = connector.split('/');

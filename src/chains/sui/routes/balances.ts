@@ -16,8 +16,12 @@ export async function getSuiBalances(
   fetchAll?: boolean,
 ): Promise<BalanceResponseType> {
   try {
+    logger.info(
+      `[Sui] Received /balances request for ${address} on ${network}. Tokens: ${tokens}, FetchAll: ${fetchAll}`,
+    );
     const sui = await Sui.getInstance(network);
     const balances = await sui.getBalances(address, tokens, fetchAll);
+    logger.info(`[Sui] Found balances for ${address}: ${JSON.stringify(balances)}`);
     return { balances };
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);

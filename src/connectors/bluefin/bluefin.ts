@@ -2,6 +2,8 @@ import { OnChainCalls, QueryChain } from '@firefly-exchange/library-sui/spot';
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
+import { logger } from '../../services/logger';
+
 import { BluefinConfig, bluefin_spot_contracts_mainnet, bluefin_spot_contracts_testnet } from './bluefin.config';
 
 export class Bluefin {
@@ -35,6 +37,7 @@ export class Bluefin {
   public onChain(keypair?: Ed25519Keypair): OnChainCalls {
     const config = this._network === 'mainnet' ? bluefin_spot_contracts_mainnet : bluefin_spot_contracts_testnet;
     const signerOption = keypair ? { signer: keypair } : undefined;
+    // logger.info(`on chain cofig ${JSON.stringify(config)}, signer option ${JSON.stringify(signerOption)}`)
     return new OnChainCalls(this._sui, config, signerOption);
   }
 }

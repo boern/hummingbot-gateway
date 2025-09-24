@@ -29,6 +29,7 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
     async (req: FastifyRequest<{ Body: BluefinCLMMRemoveLiquidityRequest }>, reply) => {
       try {
         const { network = 'mainnet', walletAddress, positionAddress, percentageToRemove } = req.body;
+        logger.info(`[Bluefin] Received /remove-liquidity request: ${JSON.stringify(req.body)}`);
 
         if (percentageToRemove <= 0 || percentageToRemove > 100) {
           throw fastify.httpErrors.badRequest('Invalid percentageToRemove - must be between 0 and 100.');
@@ -40,14 +41,17 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
         const onChain = bluefin.onChain(keypair);
 
         const position = await bluefin.query.getPositionDetails(positionAddress);
+        logger.info(`[Bluefin] Fetched position details: ${JSON.stringify(position)}`);
         if (!position) {
           throw fastify.httpErrors.notFound(`Position with ID ${positionAddress} not found.`);
         }
         if (new BN(position.liquidity).isZero()) {
           throw fastify.httpErrors.badRequest('Position has zero liquidity - nothing to remove.');
         }
+        logger.info(`[Bluefin] Position has liquidity, proceeding with removal.`);
 
         const pool = await getPool(position.pool_id, network);
+        logger.info(`[Bluefin] Fetched pool data: ${pool.id}`);
 
         const liquidityToRemove = new Decimal(position.liquidity).mul(percentageToRemove / 100).toDP(0);
 
@@ -75,8 +79,10 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
           tokenMaxB: coinAmounts.coinB, // Set to the expected amount.
           fix_amount_a: false, // Not relevant when removing liquidity by percentage.
         };
+        logger.info(`[Bluefin] Calling onChain.removeLiquidity with params: ${JSON.stringify(liquidityInput)}`);
         const tx = await onChain.removeLiquidity(pool, positionAddress, liquidityInput);
         const txResponse = tx as SuiTransactionBlockResponse;
+        logger.info(`[Bluefin] removeLiquidity transaction response: ${JSON.stringify(txResponse)}`);
 
         if (txResponse.effects?.status.status === 'success') {
           const txDetails = await sui.getTransactionBlock(txResponse.digest);
@@ -86,7 +92,7 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
             .div(1e9)
             .toNumber();
 
-          reply.send({
+          const response = {
             signature: txResponse.digest,
             status: 1, // CONFIRMED
             data: {
@@ -98,12 +104,20 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
                 .div(10 ** pool.coin_b.decimals)
                 .toNumber(),
             },
-          });
+          };
+          logger.info(`[Bluefin] Remove liquidity successful. Response: ${JSON.stringify(response)}`);
+          reply.send(response);
+        } else if (txResponse.effects?.status.status === 'failure') {
+          logger.error(`Remove liquidity failed for position ${positionAddress}: ${txResponse.effects.status.error}`);
+          throw fastify.httpErrors.internalServerError(
+            `Transaction to remove liquidity failed: ${txResponse.effects.status.error}`,
+          );
         } else {
-          reply.send({
-            signature: txResponse.digest,
-            status: 0, // PENDING
-          });
+          const response = { signature: txResponse.digest, status: 0 }; // PENDING
+          logger.info(
+            `[Bluefin] Remove liquidity transaction has no effects yet. Digest: ${txResponse.digest}. Returning PENDING.`,
+          );
+          reply.send(response);
         }
       } catch (e) {
         if (e instanceof Error) {

@@ -1,0 +1,23 @@
+[
+  {
+    "type": "clmm",
+    "network": "mainnet",
+    "baseSymbol": "SUI",
+    "quoteSymbol": "USDC",
+    "address": "0x15dbcac854b1fc68fc9467dbd9ab34270447aabd8cc0e04a5864d95ccb86b74a"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet",
+    "baseSymbol": "WAL",
+    "quoteSymbol": "USDC",
+    "address": "0xbcc6909d2e85c06cf9cbfe5b292da36f5bfa0f314806474bbf6a0bf9744d37ce"
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet",
+    "baseSymbol": "DEEP",
+    "quoteSymbol": "USDC",
+    "address": "0xd5e3a3c7396702d8f358a63ef921cc7c1951f52c6dfc2051cc8772cf7cb9900c"
+  }
+]

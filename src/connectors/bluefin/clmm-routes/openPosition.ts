@@ -39,6 +39,8 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
           slippagePct: slippage = 0.5,
         } = req.body;
 
+        logger.info(`[Bluefin] Received /open-position request: ${JSON.stringify(req.body)}`);
+
         if (baseTokenAmount === undefined && quoteTokenAmount === undefined) {
           throw fastify.httpErrors.badRequest('Either baseTokenAmount or quoteTokenAmount must be provided.');
         }
@@ -49,6 +51,7 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
 
         const bluefin = Bluefin.getInstance(network);
         const pool = await getPool(poolAddress, network);
+        logger.info(`[Bluefin] Fetched pool for open-position: ${pool.id}`);
 
         const amountaBN = baseTokenAmount ? new BN(toBigNumberStr(baseTokenAmount, pool.coin_a.decimals)) : new BN(0);
         const amountbBN = quoteTokenAmount ? new BN(toBigNumberStr(quoteTokenAmount, pool.coin_b.decimals)) : new BN(0);
@@ -111,10 +114,14 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
         const sui = await Sui.getInstance(network);
         const keypair = await sui.getWallet(walletAddress); // Use the standardized wallet retrieval
         const onChain = bluefin.onChain(keypair);
+
+        logger.info(
+          `[Bluefin] Calling onChain.openPositionWithLiquidity with params: ${JSON.stringify(liquidityInput)}`,
+        );
         const tx = await onChain.openPositionWithLiquidity(pool, liquidityInput);
 
         const txResponse = tx as SuiTransactionBlockResponse;
-
+        logger.info(`[Bluefin] openPositionWithLiquidity transaction response: ${JSON.stringify(txResponse)}`);
         if (txResponse.effects?.status.status === 'success') {
           // Fetch transaction details to provide a more complete response
           const txDetails = await sui.getTransactionBlock(txResponse.digest);
@@ -124,7 +131,7 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
 
           const positionId = liquidityProvidedEvent?.position_id;
 
-          reply.send({
+          const response = {
             signature: txResponse.digest,
             status: 1, // CONFIRMED
             data: {
@@ -142,7 +149,9 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
                 .div(10 ** pool.coin_b.decimals)
                 .toNumber(),
             },
-          });
+          };
+          logger.info(`[Bluefin] Open position successful. Response: ${JSON.stringify(response)}`);
+          reply.send(response);
         } else if (txResponse.effects?.status.status === 'failure') {
           logger.error(`Open position failed for pool ${poolAddress}: ${txResponse.effects.status.error}`);
           throw fastify.httpErrors.internalServerError(
@@ -153,8 +162,12 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
             signature: txResponse.digest,
             status: 0, // PENDING
           });
+          logger.info(
+            `[Bluefin] Open position transaction has no effects yet. Digest: ${txResponse.digest}. Returning PENDING.`,
+          );
         }
       } catch (e) {
+        logger.error(`[Bluefin] Error in /open-position: ${e}`);
         if (e instanceof Error) {
           logger.error(e.message);
           throw fastify.httpErrors.internalServerError(e.message);

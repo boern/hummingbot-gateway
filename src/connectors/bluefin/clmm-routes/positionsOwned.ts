@@ -72,15 +72,23 @@ export const positionsOwnedRoute = async (fastify: FastifyInstance) => {
     async (req: FastifyRequest<{ Querystring: BluefinCLMMGetPositionsOwnedRequest }>, reply) => {
       try {
         const { walletAddress, poolAddress, network = 'mainnet' } = req.query;
+        logger.info(
+          `[Bluefin] Received /positions-owned request for wallet ${walletAddress} on pool ${poolAddress}, network ${network}`,
+        );
+
         const bluefin = Bluefin.getInstance(network);
         const bluefin_spot_contracts =
           network === 'mainnet' ? bluefin_spot_contracts_mainnet : bluefin_spot_contracts_testnet;
+
+        logger.info(`[Bluefin] Fetching all positions for wallet ${walletAddress}...`);
         const allPositions = await bluefin.query.getUserPositions(
           bluefin_spot_contracts.BasePackage, // BasePackage is same for mainnet and testnet
           walletAddress,
         );
+        logger.info(`[Bluefin] Total positions:  ${JSON.stringify(allPositions, null, 2)}`);
         const filteredPositions = allPositions.filter((p) => p.pool_id === poolAddress);
         const positions = await Promise.all(filteredPositions.map((p) => toGatewayPosition(p, network)));
+        logger.info(`[Bluefin] Sending ${positions.length} filtered positions.`);
         reply.send(positions);
       } catch (e) {
         if (e instanceof Error) {

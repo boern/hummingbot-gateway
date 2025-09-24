@@ -9,7 +9,7 @@ import fse from 'fs-extra';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { getSafeWalletFilePath } from '../../wallet/utils';
+import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
 import { SuiNetworkConfig, getSuiNetworkConfig } from './sui.config';
 
@@ -232,7 +232,13 @@ export class Sui {
 
   getKeypairFromPrivateKey(privateKey: string): Ed25519Keypair {
     logger.debug('Getting keypair from private key.');
-    return Ed25519Keypair.fromSecretKey(fromBase64(privateKey));
+    // The private key can be in two formats:
+    // 1. A Bech32 encoded string with the prefix `suiprivkey`.
+    // 2. A Base64 encoded 32-byte secret key.
+    if (privateKey.startsWith('suiprivkey')) {
+      return Ed25519Keypair.fromSecretKey(privateKey, { skipValidation: true });
+    }
+    return Ed25519Keypair.fromSecretKey(fromBase64(privateKey), { skipValidation: true });
   }
 
   static validateAddress(address: string): string {
@@ -262,7 +268,7 @@ export class Sui {
       }
       const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
 
-      return Ed25519Keypair.fromSecretKey(fromBase64(decrypted));
+      return Ed25519Keypair.fromSecretKey(decrypted);
     } catch (error) {
       if (error.message.includes('Invalid Sui address')) {
         throw error; // Re-throw validation errors

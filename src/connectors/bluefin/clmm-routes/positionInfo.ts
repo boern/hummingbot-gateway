@@ -28,14 +28,21 @@ export const positionInfoRoute = async (fastify: FastifyInstance) => {
         const bluefin = Bluefin.getInstance(network);
 
         const position = await bluefin.query.getPositionDetails(positionAddress);
+        logger.info(
+          `[Bluefin] fetched position info for position address ${req.query.positionAddress}: ${JSON.stringify(position, null, 2)}`,
+        );
         if (!position) {
           throw fastify.httpErrors.notFound(`Position with ID ${positionAddress} not found.`);
         }
-
         return await toGatewayPosition(position, network);
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
+      } catch (error) {
+        logger.error(
+          `Error fetching position info for position address ${req.query.positionAddress}: ${error.message}`,
+        );
+        // Re-throw the error to ensure it's not swallowed and the client receives an appropriate response.
+        throw fastify.httpErrors.internalServerError(
+          `Failed to fetch position info for position address ${req.query.positionAddress},error: ${error.message}`,
+        );
       }
     },
   );

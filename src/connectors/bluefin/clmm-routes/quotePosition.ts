@@ -20,6 +20,7 @@ export async function quotePosition(
   quoteTokenAmount?: number,
 ): Promise<QuotePositionResponseType> {
   if (baseTokenAmount === undefined && quoteTokenAmount === undefined) {
+    logger.error('[Bluefin] quotePosition failed: Either baseTokenAmount or quoteTokenAmount must be provided.');
     throw fastify.httpErrors.badRequest('Either baseTokenAmount or quoteTokenAmount must be provided.');
   }
 
@@ -27,8 +28,10 @@ export async function quotePosition(
     throw fastify.httpErrors.badRequest('lowerPrice must be less than upperPrice.');
   }
 
+  logger.info(`[Bluefin] Quoting position for pool ${poolAddress} with price range ${lowerPrice}-${upperPrice}`);
   // const bluefin = Bluefin.getInstance(network);
   const pool = await getPool(poolAddress, network);
+  logger.info(`[Bluefin] Fetched pool data for quote: ${JSON.stringify(pool, null, 2)}`);
 
   const amountABN = baseTokenAmount ? new BN(toBigNumberStr(baseTokenAmount, pool.coin_a.decimals)) : new BN(0);
   const amountBBN = quoteTokenAmount ? new BN(toBigNumberStr(quoteTokenAmount, pool.coin_b.decimals)) : new BN(0);
@@ -65,7 +68,7 @@ export async function quotePosition(
 
   const baseLimited = baseTokenAmount !== undefined && quoteTokenAmount === undefined;
 
-  return {
+  const response: QuotePositionResponseType = {
     baseLimited: baseLimited,
     baseTokenAmount: new Decimal(coinAmounts.coinA.toString()).div(10 ** pool.coin_a.decimals).toNumber(),
     quoteTokenAmount: new Decimal(coinAmounts.coinB.toString()).div(10 ** pool.coin_b.decimals).toNumber(),
@@ -73,6 +76,8 @@ export async function quotePosition(
     quoteTokenAmountMax: new Decimal(coinAmounts.coinB.toString()).div(10 ** pool.coin_b.decimals).toNumber(),
     liquidity: liquidityAmount.toString(),
   };
+  logger.info(`[Bluefin] Position quote successful. Response: ${JSON.stringify(response, null, 2)}`);
+  return response;
 }
 
 export const quotePositionRoute = async (fastify: FastifyInstance) => {
@@ -100,6 +105,7 @@ export const quotePositionRoute = async (fastify: FastifyInstance) => {
           baseTokenAmount,
           quoteTokenAmount,
         } = req.query;
+        logger.info(`[Bluefin] Received /quote-position request: ${JSON.stringify(req.query)}`);
 
         return await quotePosition(
           fastify,
@@ -112,7 +118,7 @@ export const quotePositionRoute = async (fastify: FastifyInstance) => {
         );
       } catch (e) {
         if (e instanceof Error) {
-          logger.error(e.message);
+          logger.error(`[Bluefin] Error in /quote-position: ${e.message}`);
           throw fastify.httpErrors.internalServerError(e.message);
         }
         throw e;

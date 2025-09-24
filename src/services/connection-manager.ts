@@ -66,16 +66,16 @@ export async function getConnector(
 ): Promise<Connector> {
   // Dynamically import connector classes only when needed
   if (connector === 'uniswap') {
-    const { Uniswap } = await import('../connectors/uniswap/uniswap');
+    const { Uniswap } = await import('../connectors/uniswap/uniswap.js');
     return await Uniswap.getInstance(network);
   } else if (connector === 'jupiter') {
-    const { Jupiter } = await import('../connectors/jupiter/jupiter');
+    const { Jupiter } = await import('../connectors/jupiter/jupiter.js');
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
-    const { Meteora } = await import('../connectors/meteora/meteora');
+    const { Meteora } = await import('../connectors/meteora/meteora.js');
     return await Meteora.getInstance(network);
   } else if (connector === 'bluefin') {
-    const { Bluefin } = await import('../connectors/bluefin/bluefin');
+    const { Bluefin } = await import('../connectors/bluefin/bluefin.js');
     return await Bluefin.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');

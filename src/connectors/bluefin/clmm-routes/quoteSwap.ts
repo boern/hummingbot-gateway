@@ -5,18 +5,15 @@ import { BN } from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyInstance } from 'fastify';
 
+import { Sui } from '../../../chains/sui/sui';
+import { getSuiChainConfig } from '../../../chains/sui/sui.config';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Bluefin } from '../bluefin';
+
+// import { walletAddress } from '../config'}
 import { getPool } from '../clmm-routes/poolInfo';
 import { BluefinRouterQuoteSwapRequest } from '../schemas';
-
-// interface SwapResultEvent {
-//   a2b: boolean;
-//   amount_calculated: string;
-//   amount_specified: string;
-//   end_sqrt_price: string;
-// }
 
 export const quoteSwapRoute = async (fastify: FastifyInstance) => {
   fastify.get(
@@ -33,7 +30,7 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
       },
     },
     async (req) => {
-      console.log('quote-swap request:', JSON.stringify(req.query, null, 2));
+      logger.info(`[Bluefin] quote-swap request: ${JSON.stringify(req.query, null, 2)}`);
       try {
         const {
           network = 'mainnet',
@@ -41,7 +38,7 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
           baseToken,
           quoteToken,
           amount,
-          side,
+          side, // Type assertion for side
           slippagePct: slippage = 0.5,
         } = req.query as BluefinRouterQuoteSwapRequest;
 
@@ -51,10 +48,15 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
         }
 
         const bluefin = Bluefin.getInstance(network);
-        const onChain = bluefin.onChain(); // No signer needed for dry run
+        const sui = await Sui.getInstance(network);
+        const sui_chain_config = getSuiChainConfig();
+        logger.info(`[Bluefin] sui_chain_config : ${JSON.stringify(sui_chain_config, null, 2)}`);
+        const keypair = await sui.getWallet(sui_chain_config.defaultWallet);
+        // logger.info(`keypair : ${JSON.stringify(keypair, null, 2)}`);
+        const onChain = bluefin.onChain(keypair);
         const pool = await getPool(poolAddress, network);
         const poolMeta = parsePool(pool);
-
+        logger.info(`[Bluefin] poolMeta : ${JSON.stringify(poolMeta, null, 2)}`);
         // Determine swap direction and tokens
         const isSell = side === 'SELL';
         const tokenIn = isSell ? baseToken : (quoteToken as string);
@@ -62,44 +64,73 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
 
         // The coinA/coinB from poolMeta are full addresses like '0x...::wal::WAL'
         // We should check if the provided token symbol is part of the address string.
-        const aToB = poolMeta.coinA.includes(`::${tokenIn.toLowerCase()}::${tokenIn.toUpperCase()}`);
+        // const aToB = poolMeta.coinA.includes(`::${tokenIn.toLowerCase()}::${tokenIn.toUpperCase()}`);
+        const aToB = isSell;
 
-        if (!aToB && (tokenIn !== poolMeta.coinB || tokenOut !== poolMeta.coinA)) {
-          throw fastify.httpErrors.badRequest('Invalid token pair for the given pool.');
+        if (
+          (isSell && !poolMeta.name.includes(`${baseToken}-`)) ||
+          (!isSell && !poolMeta.name.includes(`-${quoteToken}`))
+        ) {
+          throw fastify.httpErrors.badRequest(
+            'Invalid token pair for the given pool. Base/Quote do not match pool definition.',
+          );
         }
 
-        const inputDecimals = aToB ? poolMeta.coinADecimals : poolMeta.coinBDecimals;
-        const outputDecimals = aToB ? poolMeta.coinBDecimals : poolMeta.coinADecimals;
-        const amountInBigNumber = toBigNumber(amount, inputDecimals);
+        const byAmountIn = side === 'SELL';
+
+        const inputDecimals = isSell ? poolMeta.coinADecimals : poolMeta.coinBDecimals;
+        const outputDecimals = isSell ? poolMeta.coinBDecimals : poolMeta.coinADecimals;
+
+        const amountInBigNumber = byAmountIn ? toBigNumber(amount, inputDecimals) : 0;
+        const amountOutBigNumber = byAmountIn ? 0 : toBigNumber(amount, outputDecimals);
 
         const swapParams: ISwapParams = {
           pool: pool,
           amountIn: amountInBigNumber,
-          amountOut: 0,
+          amountOut: amountOutBigNumber,
           aToB: aToB,
-          byAmountIn: true,
+          byAmountIn: byAmountIn,
           slippage: slippage,
         };
-        console.log('quote-swap swapParams:', JSON.stringify(swapParams, null, 2));
-        const swapResult = (await onChain.computeSwapResults(swapParams)) as SuiTransactionBlockResponse;
-
+        logger.info(`[Bluefin] quote-swap swapParams: ${JSON.stringify(swapParams, null, 2)}`);
+        const swapResult = await onChain.computeSwapResults(swapParams);
+        logger.info(`[Bluefin] quote-swap swapResult : ${JSON.stringify(swapResult, null, 2)}`);
         // The actual swap result is in the `parsedJson` of the SwapResult event
         const swapEventData = swapResult.events?.find((e) => e.type.endsWith('::pool::SwapResult'))?.parsedJson as any;
+        logger.info(`[Bluefin] quote-swap swapEventData: ${JSON.stringify(swapEventData, null, 2)}`);
 
         if (!swapEventData) {
           throw new Error('Could not find SwapResult event in the transaction effects.');
         }
 
-        const amountIn = new Decimal(swapEventData.amount_specified.toString()).div(10 ** inputDecimals).toNumber();
-        const amountOut = new Decimal(swapEventData.amount_calculated.toString()).div(10 ** outputDecimals).toNumber();
+        let amountIn: number;
+        let amountOut: number;
 
-        // Manually calculate minAmountOut based on slippage, as the SDK does not provide a utility for this in quote calculation.
-        const minAmountOutBN = new Decimal(swapEventData.amount_calculated.toString())
-          .mul(new Decimal(1).minus(new Decimal(slippage).div(100)))
-          .floor();
-        const minAmountOut = new Decimal(minAmountOutBN.toString()).div(10 ** outputDecimals).toNumber();
+        if (byAmountIn) {
+          amountIn = new Decimal(swapEventData.amount_specified.toString()).div(10 ** inputDecimals).toNumber();
+          amountOut = new Decimal(swapEventData.amount_calculated.toString()).div(10 ** outputDecimals).toNumber();
+        } else {
+          amountIn = new Decimal(swapEventData.amount_calculated.toString()).div(10 ** inputDecimals).toNumber();
+          amountOut = new Decimal(swapEventData.amount_specified.toString()).div(10 ** outputDecimals).toNumber();
+        }
 
-        const price = amountIn > 0 ? amountOut / amountIn : 0;
+        let minAmountOut: number;
+        if (byAmountIn) {
+          // For exact-in, minAmountOut is calculated from the resulting amountOut minus slippage.
+          const minAmountOutBN = new Decimal(swapEventData.amount_calculated.toString())
+            .mul(new Decimal(1).minus(new Decimal(slippage).div(100)))
+            .floor();
+          minAmountOut = new Decimal(minAmountOutBN.toString()).div(10 ** outputDecimals).toNumber();
+        } else {
+          // For exact-out, the amountOut is fixed. The minAmountOut is this fixed amount minus slippage.
+          // The slippage is applied to the amount the user wants to receive.
+          minAmountOut = new Decimal(amountOut).mul(new Decimal(1).minus(new Decimal(slippage).div(100))).toNumber();
+        }
+
+        const maxAmountIn = byAmountIn
+          ? amountIn
+          : new Decimal(swapEventData.amount_calculated.toString()).div(10 ** inputDecimals).toNumber();
+        const price = amountIn > 0 ? (byAmountIn ? amountOut / amountIn : amountIn / amountOut) : 0;
 
         // Calculate price impact
         const startPrice = TickMath.sqrtPriceX64ToPrice(
@@ -113,9 +144,22 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
           poolMeta.coinBDecimals,
         );
 
-        const priceImpact = startPrice.isZero()
-          ? new Decimal(0)
-          : new Decimal(endPrice).div(startPrice).minus(1).abs().times(100);
+        let priceImpact: Decimal;
+        if (byAmountIn) {
+          // For SELL (exact-in), price moves down. (endPrice < startPrice).
+          // Formula: 1 - (end / start) is more numerically stable than (start - end) / start
+          priceImpact = startPrice.isZero()
+            ? new Decimal(0)
+            : new Decimal(1).minus(endPrice.div(startPrice)).abs().times(100);
+          // priceImpact = startPrice.isZero() ? new Decimal(0) : new Decimal(1).sub(endPrice.div(startPrice)).abs().times(100);
+        } else {
+          // For BUY (exact-out), price moves up. (endPrice > startPrice).
+          // Formula: 1 - (start / end) is more numerically stable than (end - start) / end
+          priceImpact = endPrice.isZero()
+            ? new Decimal(0)
+            : new Decimal(1).minus(startPrice.div(endPrice)).abs().times(100);
+          // priceImpact = endPrice.isZero() ? new Decimal(0) : new Decimal(1).sub(startPrice.div(endPrice)).abs().times(100);
+        }
 
         const quoteResponse: QuoteSwapResponseType = {
           poolAddress: pool.id,
@@ -126,11 +170,11 @@ export const quoteSwapRoute = async (fastify: FastifyInstance) => {
           price: price,
           slippagePct: slippage,
           minAmountOut: minAmountOut,
-          maxAmountIn: amountIn,
+          maxAmountIn: maxAmountIn,
           priceImpactPct: priceImpact.toNumber(),
         };
 
-        console.log('quote-swap response:', JSON.stringify(quoteResponse, null, 2));
+        logger.info(`[Bluefin] quote - swap response: ${JSON.stringify(quoteResponse, null, 2)}`);
         return quoteResponse;
       } catch (e) {
         if (e instanceof Error) {

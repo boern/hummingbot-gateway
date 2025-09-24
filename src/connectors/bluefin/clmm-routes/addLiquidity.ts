@@ -37,6 +37,8 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
           slippagePct: slippage = 0.5,
         } = req.body;
 
+        logger.info(`[Bluefin] Received /add-liquidity request: ${JSON.stringify(req.body)}`);
+
         if (baseTokenAmount === undefined && quoteTokenAmount === undefined) {
           throw fastify.httpErrors.badRequest('Either baseTokenAmount or quoteTokenAmount must be provided.');
         }
@@ -44,6 +46,7 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
         const sui = await Sui.getInstance(network);
         const keypair = await sui.getWallet(walletAddress);
         const bluefin = Bluefin.getInstance(network);
+        logger.info(`[Bluefin] positionAddress:${positionAddress}`);
         const onChain = bluefin.onChain(keypair);
 
         const position = await bluefin.query.getPositionDetails(positionAddress);
@@ -103,10 +106,10 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
             ),
           },
         };
+        logger.info(`[Bluefin] Calling onChain.provideLiquidity with params: ${JSON.stringify(liquidityParams)}`);
 
         const tx = await onChain.provideLiquidity(pool, positionAddress, liquidityParams);
         const txResponse = tx as SuiTransactionBlockResponse;
-
         if (txResponse.effects?.status.status === 'success') {
           const txDetails = await sui.getTransactionBlock(txResponse.digest);
 
@@ -132,6 +135,7 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
                 .toNumber(),
             },
           });
+          logger.info(`[Bluefin] add liquidity successful. Response: ${JSON.stringify(txResponse)}`);
         } else if (txResponse.effects?.status.status === 'failure') {
           logger.error(`Add liquidity failed for position ${positionAddress}: ${txResponse.effects.status.error}`);
           throw fastify.httpErrors.internalServerError(

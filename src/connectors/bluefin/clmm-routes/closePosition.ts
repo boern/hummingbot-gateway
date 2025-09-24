@@ -26,6 +26,8 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
     async (req: FastifyRequest<{ Body: BluefinCLMMClosePositionRequest }>, reply) => {
       try {
         const { network = 'mainnet', walletAddress, positionAddress } = req.body;
+        logger.info(`[Bluefin] Received /close-position request: ${JSON.stringify(req.body)}`);
+
         const sui = await Sui.getInstance(network);
         const keypair = await sui.getWallet(walletAddress);
         const bluefin = Bluefin.getInstance(network);
@@ -33,12 +35,14 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
 
         // First, get position details to find the pool it belongs to.
         const position = await bluefin.query.getPositionDetails(positionAddress);
+        logger.info(`[Bluefin] Fetched position details for closing: ${JSON.stringify(position)}`);
         if (!position) {
           throw fastify.httpErrors.notFound(`Position with ID ${positionAddress} not found.`);
         }
 
         // Now get the pool using the pool_id from the position.
         const pool = await onChain.queryChain.getPool(position.pool_id);
+        logger.info(`[Bluefin] Fetched pool data for closing: ${pool.id}`);
 
         // 1. Get amounts from position liquidity before closing
         const lowerSqrtPrice = TickMath.tickIndexToSqrtPriceX64(position.lower_tick);
@@ -59,6 +63,7 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
 
         // 2. Get accrued fees before collecting them
         const accruedFees = await onChain.getAccruedFeeAndRewards(pool, positionAddress);
+        logger.info(`[Bluefin] Fetched accrued fees for closing: ${JSON.stringify(accruedFees)}`);
         const baseFeeAmountCollected = new Decimal(accruedFees.fee.coinA.toString())
           .div(10 ** pool.coin_a.decimals)
           .toNumber();
@@ -67,9 +72,11 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
           .toNumber();
 
         // This call will remove liquidity, collect fees, and close the position account.
+        logger.info(`[Bluefin] Calling onChain.closePosition for position: ${positionAddress}`);
         const tx = await onChain.closePosition(pool, positionAddress);
 
         const txResponse = tx as SuiTransactionBlockResponse;
+        logger.info(`[Bluefin] closePosition transaction response: ${JSON.stringify(txResponse)}`);
 
         if (txResponse.effects?.status.status === 'success') {
           const txDetails = await sui.getTransactionBlock(txResponse.digest);
@@ -82,7 +89,7 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
 
           const rentRefunded = new Decimal(txDetails.effects.gasUsed.storageRebate).div(1e9).toNumber();
 
-          reply.send({
+          const response = {
             signature: txResponse.digest,
             status: 1, // CONFIRMED
             data: {
@@ -93,7 +100,9 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
               baseFeeAmountCollected: baseFeeAmountCollected,
               quoteFeeAmountCollected: quoteFeeAmountCollected,
             },
-          });
+          };
+          logger.info(`[Bluefin] Close position successful. Response: ${JSON.stringify(response)}`);
+          reply.send(response);
         } else if (txResponse.effects?.status.status === 'failure') {
           logger.error(`Close position failed for position ${positionAddress}: ${txResponse.effects.status.error}`);
           throw fastify.httpErrors.internalServerError(
@@ -104,10 +113,13 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
             signature: txResponse.digest,
             status: 0, // PENDING
           });
+          logger.info(
+            `[Bluefin] Close position transaction has no effects yet. Digest: ${txResponse.digest}. Returning PENDING.`,
+          );
         }
       } catch (e) {
         if (e instanceof Error) {
-          logger.error(e.message);
+          logger.error(`[Bluefin] Error in /close-position: ${e}`);
           throw fastify.httpErrors.internalServerError(e.message);
         }
 

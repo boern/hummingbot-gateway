@@ -29,6 +29,7 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
     async (req, reply) => {
       try {
         const { network = 'mainnet', walletAddress, positionAddress } = req.body;
+        logger.info(`[Bluefin] Received /collect-fees request: ${JSON.stringify(req.body)}`);
 
         const sui = await Sui.getInstance(network);
         const keypair = await sui.getWallet(walletAddress);
@@ -44,6 +45,7 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
 
         // 2. Get accrued fees before collecting them
         const accruedFees = await onChain.getAccruedFeeAndRewards(pool, positionAddress);
+        logger.info(`[Bluefin] onChain.collectFeeAndRewards response: ${JSON.stringify(accruedFees)}`);
         const baseFeeToCollect = new Decimal(accruedFees.fee.coinA.toString())
           .div(10 ** pool.coin_a.decimals)
           .toNumber();
@@ -53,6 +55,7 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
 
         // 3. Collect fees and rewards
         const txResponse = (await onChain.collectFeeAndRewards(pool, positionAddress)) as SuiTransactionBlockResponse;
+        logger.info(`[Bluefin] collectFeeAndRewards transaction response: ${JSON.stringify(txResponse)}`);
 
         // 4. Process the transaction response
         if (txResponse.effects?.status.status === 'success') {
@@ -62,7 +65,7 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
             .div(1e9)
             .toNumber();
 
-          reply.send({
+          const collectedFee = {
             signature: txResponse.digest,
             status: 1, // CONFIRMED
             data: {
@@ -70,15 +73,17 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
               baseFeeAmountCollected: baseFeeToCollect,
               quoteFeeAmountCollected: quoteFeeToCollect,
             },
-          });
+          };
+          logger.info(`[Bluefin] Collect fees successful.Response: ${JSON.stringify(collectedFee)} `);
+          reply.send(collectedFee);
         } else if (txResponse.effects?.status.status === 'failure') {
-          logger.error(`Fee collection failed for position ${positionAddress}: ${txResponse.effects.status.error}`);
+          logger.error(`Fee collection failed for position ${positionAddress}: ${txResponse.effects.status.error} `);
           // Even though it failed, we have a signature.
           // We can return a FAILED status. Hummingbot doesn't have a specific state for this,
           // but we can use a non-CONFIRMED status. Let's use 0 (PENDING) and let it timeout,
           // or a custom status if the client can handle it. For now, we'll throw an error.
           throw fastify.httpErrors.internalServerError(
-            `Transaction to collect fees failed: ${txResponse.effects.status.error}`,
+            `Transaction to collect fees failed: ${txResponse.effects.status.error} `,
           );
         } else {
           // If there are no effects, the transaction is likely still processing.
@@ -86,6 +91,9 @@ export const collectFeesRoute = async (fastify: FastifyInstance) => {
             signature: txResponse.digest,
             status: 0, // PENDING
           });
+          logger.info(
+            `[Bluefin] Collect fees transaction has no effects yet.Digest: ${txResponse.digest}. Returning PENDING.`,
+          );
         }
       } catch (e) {
         if (e instanceof Error) {

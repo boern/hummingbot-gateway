@@ -56,24 +56,74 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
 
         // The coinA/coinB from poolMeta are full addresses like '0x...::wal::WAL'
         // We should check if the provided token symbol is part of the address string.
-        const aToB = poolMeta.coinA.includes(`::${tokenIn.toLowerCase()}::${tokenIn.toUpperCase()}`);
-        if (!aToB && (tokenIn !== poolMeta.coinB || tokenOut !== poolMeta.coinA)) {
-          throw fastify.httpErrors.badRequest('Invalid token pair for the given pool.');
+        // const aToB = poolMeta.coinA.includes(`::${tokenIn.toLowerCase()}::${tokenIn.toUpperCase()}`);
+        // if (!aToB && (tokenIn !== poolMeta.coinB || tokenOut !== poolMeta.coinA)) {
+        //   throw fastify.httpErrors.badRequest('Invalid token pair for the given pool.');
+        // }
+        const aToB = isSell;
+
+        if (
+          (isSell && !poolMeta.name.includes(`${baseToken}-`)) ||
+          (!isSell && !poolMeta.name.includes(`-${quoteToken}`))
+        ) {
+          throw fastify.httpErrors.badRequest(
+            'Invalid token pair for the given pool. Base/Quote do not match pool definition.',
+          );
         }
 
+        const byAmountIn = side === 'SELL';
         const inputDecimals = aToB ? poolMeta.coinADecimals : poolMeta.coinBDecimals;
         const outputDecimals = aToB ? poolMeta.coinBDecimals : poolMeta.coinADecimals;
-        const amountInBigNumber = toBigNumber(amount, inputDecimals);
+        // const amountInBigNumber = toBigNumber(amount, inputDecimals);
+        // When buying (byAmountIn=false), amount is the desired output amount.
+        // When selling (byAmountIn=true), amount is the exact input amount.
+        // const amountInBigNumber = byAmountIn ? toBigNumber(amount, inputDecimals) : 0;
+        // const amountOutBigNumber = byAmountIn ? 0 : toBigNumber(amount, byAmountIn ? outputDecimals : inputDecimals);
+        // For BUY side, the 'amount' is for the base token (WAL), which is coinA and the output of the swap.
+        // So we need to use its decimals.
+        const amountInBigNumber = byAmountIn ? toBigNumber(amount, inputDecimals) : 0;
+        const amountOutBigNumber = byAmountIn ? 0 : toBigNumber(amount, outputDecimals);
 
-        const swapParams: ISwapParams = {
-          pool: pool,
-          amountIn: amountInBigNumber,
-          amountOut: 0, // amountOut is calculated by the SDK
-          aToB: aToB,
-          byAmountIn: true,
-          slippage: slippage,
-        };
+        let swapParams: ISwapParams;
 
+        if (byAmountIn) {
+          // For SELL side (exact amount in), we know the exact amountIn.
+          swapParams = {
+            pool: pool,
+            amountIn: amountInBigNumber,
+            amountOut: amountOutBigNumber, // This will be 0
+            aToB: aToB,
+            byAmountIn: byAmountIn,
+            slippage: slippage,
+          };
+        } else {
+          // For BUY side (exact amount out), we need to compute the required amountIn first.
+          // The `swapAssets` function for `byAmountIn: false` requires `amountInMax`.
+          const quote_swap_params = { pool, amountIn: 0, amountOut: amountOutBigNumber, aToB, byAmountIn, slippage };
+          logger.info(`[Bluefin] Calling onChain.computeSwapResults with params: ${JSON.stringify(quote_swap_params)}`);
+          const quoteResult = await onChain.computeSwapResults(quote_swap_params);
+          logger.info(`[Bluefin] quote-swap quoteResult : ${JSON.stringify(quoteResult, null, 2)}`);
+          const quoteEvent = quoteResult.events?.find((e) => e.type.endsWith('::pool::SwapResult'))?.parsedJson as any;
+          if (!quoteEvent || !quoteEvent.amount_calculated) {
+            throw fastify.httpErrors.internalServerError('Failed to get quote for exact-out swap.');
+          }
+          const requiredAmountIn = new Decimal(quoteEvent.amount_calculated.toString());
+          const amountInMax = requiredAmountIn
+            .mul(new Decimal(1).add(new Decimal(slippage).div(100)))
+            .floor()
+            .toNumber();
+
+          swapParams = {
+            pool: pool,
+            amountIn: amountInMax, // Use amountInMax for the `amountIn` field when byAmountIn is false
+            // amountOut: amountOutBigNumber,
+            amountOut: 0,
+            aToB: aToB,
+            // byAmountIn: byAmountIn,
+            byAmountIn: true,
+            slippage: slippage,
+          };
+        }
         logger.info(`[Bluefin] Calling onChain.swapAssets with params: ${JSON.stringify(swapParams)}`);
         const tx = (await onChain.swapAssets(swapParams)) as SuiTransactionBlockResponse;
 
@@ -85,13 +135,14 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
             .toNumber();
 
           const swapEvent = tx.events?.find((e) => e.type.endsWith('::events::AssetSwap'))?.parsedJson as any;
+          logger.info(`[Bluefin] execute-swap swapEventData: ${JSON.stringify(swapEvent, null, 2)}`);
 
-          if (!swapEvent) {
+          if (!swapEvent || !swapEvent.amount_in || !swapEvent.amount_out) {
             throw fastify.httpErrors.internalServerError('Swap event not found in successful transaction');
           }
 
-          const amountIn = new Decimal(swapEvent.amount_in).div(10 ** inputDecimals).toNumber();
-          const amountOut = new Decimal(swapEvent.amount_out).div(10 ** outputDecimals).toNumber();
+          const amountIn = new Decimal(swapEvent.amount_in.toString()).div(10 ** inputDecimals).toNumber();
+          const amountOut = new Decimal(swapEvent.amount_out.toString()).div(10 ** outputDecimals).toNumber();
 
           const response = {
             signature: tx.digest,
@@ -106,9 +157,7 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
               quoteTokenBalanceChange: isSell ? amountOut : -amountIn,
             },
           };
-
           logger.info(`[Bluefin] Execute swap response: ${JSON.stringify(response)}`);
-
           return response;
         } else if (tx.effects?.status.status === 'failure') {
           logger.error(`Execute swap transaction failed: ${tx.effects.status.error}`);
@@ -121,12 +170,9 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
           return { signature: tx.digest, status: 0 }; // PENDING
         }
       } catch (e) {
-        if (e.statusCode) {
-          throw e;
-        }
+        logger.error(`[Bluefin] Execute swap error: ${e.message}`, e);
         if (e instanceof Error) {
-          logger.error(e.message);
-          throw fastify.httpErrors.internalServerError(e.message);
+          throw fastify.httpErrors.internalServerError(`Execute swap failed: ${e.message}`);
         }
         throw e;
       }

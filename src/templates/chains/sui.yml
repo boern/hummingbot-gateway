@@ -1,4 +1,2 @@
-chain: sui
-network: mainnet
-nativeCurrency: SUI
-rpcURL: https://fullnode.mainnet.sui.io:443
+defaultNetwork: mainnet
+defaultWallet: '0xaf9306cac62396be300b175046140c392eed876bd8ac0efac6301cea286fa272'

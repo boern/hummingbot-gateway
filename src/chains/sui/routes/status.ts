@@ -7,19 +7,22 @@ import { Sui } from '../sui';
 
 export async function getSuiStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
+    logger.info(`[Sui] Received /status request for network: ${network}`);
     const sui = await Sui.getInstance(network);
     const chain = 'sui';
     const rpcUrl = sui.rpcUrl;
     const nativeCurrency = sui.nativeTokenSymbol;
     const currentBlockNumber = await sui.getCurrentBlockNumber();
 
-    return {
+    const response = {
       chain,
       network,
       rpcUrl,
       currentBlockNumber,
       nativeCurrency,
     };
+    logger.info(`[Sui] Responding to /status request: ${JSON.stringify(response)}`);
+    return response;
   } catch (error) {
     logger.error(`Error getting Sui status: ${error.message}`);
     throw fastify.httpErrors.internalServerError(`Failed to get Sui status: ${error.message}`);

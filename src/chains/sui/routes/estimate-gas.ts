@@ -5,10 +5,12 @@ import { logger } from '../../../services/logger';
 import { SuiEstimateGasRequest } from '../schemas';
 import { Sui } from '../sui';
 
-const DEFAULT_COMPUTE_UNITS = 10000000; // A reasonable default gas budget for a typical transaction
+// A reasonable default gas budget for a typical transaction
+const DEFAULT_COMPUTE_UNITS = 200000;
 
 export async function estimateGasSui(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
   try {
+    logger.info(`[Sui] Received /estimate-gas request for network: ${network}`);
     const sui = await Sui.getInstance(network);
     const gasPrice = await sui.getReferenceGasPrice();
 
@@ -16,7 +18,7 @@ export async function estimateGasSui(fastify: FastifyInstance, network: string):
     // Convert MIST to SUI（1 SUI = 10^9 MIST）
     const feeInSui = fee / 1e9; // Convert MIST to SUI
 
-    return {
+    const response = {
       feePerComputeUnit: Number(gasPrice),
       denomination: 'MIST',
       computeUnits: DEFAULT_COMPUTE_UNITS,
@@ -24,6 +26,8 @@ export async function estimateGasSui(fastify: FastifyInstance, network: string):
       fee: feeInSui,
       timestamp: Date.now(),
     };
+    logger.info(`[Sui] Responding to /estimate-gas request: ${JSON.stringify(response)}`);
+    return response;
   } catch (error) {
     logger.error(`Error estimating gas for network ${network}: ${error.message}`);
     throw fastify.httpErrors.internalServerError(`Failed to estimate gas for network ${network}: ${error.message}`);

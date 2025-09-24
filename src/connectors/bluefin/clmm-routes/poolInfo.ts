@@ -33,11 +33,12 @@ export const poolInfoRoute = async (fastify: FastifyInstance) => {
       try {
         const { poolAddress, network = 'mainnet' } = request.query;
 
+        logger.info(`[Bluefin] Fetching pool info for pool address ${poolAddress} on network ${network}`);
         const pool: Pool = await getPool(poolAddress, network);
+        logger.info(`[Bluefin] Pool data fetched successfully. Pool info :${JSON.stringify(pool, null, 2)}`);
 
         const price = TickMath.sqrtPriceX64ToPrice(
           new BN(pool.current_sqrt_price),
-
           pool.coin_a.decimals,
           pool.coin_b.decimals,
         );
@@ -55,6 +56,7 @@ export const poolInfoRoute = async (fastify: FastifyInstance) => {
           activeBinId: parseInt(pool.current_tick.toString()),
         };
 
+        logger.info(`[Bluefin] Sending pool info: ${JSON.stringify(poolInfo, null, 2)}`);
         reply.send(poolInfo);
       } catch (e) {
         if (e instanceof Error) {
