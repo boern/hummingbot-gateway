@@ -1,6 +1,14 @@
 import crypto from 'crypto';
 
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint } from '@solana/spl-token';
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  unpackAccount,
+  createTransferInstruction,
+  getMint,
+  getOrCreateAssociatedTokenAccount,
+  transfer as splTokenTransfer,
+} from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -13,12 +21,16 @@ import {
   TransactionResponse,
   VersionedTransaction,
   VersionedTransactionResponse,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
+
+import { TransferResponse } from '#src/wallet/schemas';
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
@@ -1634,6 +1646,98 @@ export class Solana {
         status: 0, // PENDING
         data: undefined,
       };
+    }
+  }
+
+  /**
+   * Transfers tokens from a wallet to a destination address.
+   * This method handles both native SOL and SPL token transfers.
+   * @param wallet The sender's Keypair.
+   * @param toAddress The recipient's public key address.
+   * @param token The symbol of the token to transfer (e.g., 'SOL', 'USDC').
+   * @param amount The amount of the token to transfer.
+   * @returns An object containing the transaction hash.
+   */
+  public async transfer(wallet: Keypair, toAddress: string, token: string, amount: number): Promise<TransferResponse> {
+    let signature: string | undefined;
+    const toPublicKey = new PublicKey(toAddress);
+    // 1. Estimate Gas Price
+    const computeUnitsToUse = this.config.defaultComputeUnits;
+    const priorityFeePerCU = await this.estimateGasPrice();
+
+    if (token.toUpperCase() === this.nativeTokenSymbol) {
+      // --- Native SOL Transfer ---
+      logger.info(`Preparing to transfer ${amount} SOL from ${wallet.publicKey.toBase58()} to ${toAddress}`);
+
+      const lamportsToSend = amount * LAMPORTS_PER_SOL;
+
+      // build transfer instruction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: toPublicKey,
+          lamports: lamportsToSend,
+        }),
+      );
+
+      try {
+        const result = await this.sendAndConfirmTransaction(transaction, [wallet], computeUnitsToUse, priorityFeePerCU);
+        signature = result?.signature;
+        if (signature) {
+          return { signature: signature, status: 1 };
+        } else {
+          return { signature: signature || '', status: 0, error: 'Transaction not confirmed' };
+        }
+      } catch (e: any) {
+        logger.error(`Solana Native Transfer Error: ${e.message}`);
+        return { signature: signature || '', status: -1, error: e.message };
+      }
+    } else {
+      // --- SPL Token Transfer ---
+      logger.info(`Preparing to transfer ${amount} ${token} from ${wallet.publicKey.toBase58()} to ${toAddress}`);
+
+      const tokenInfo = await this.getToken(token);
+      if (!tokenInfo) {
+        throw new Error(`Token ${token} not found in the token list.`);
+      }
+
+      const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        wallet,
+        new PublicKey(tokenInfo.address),
+        wallet.publicKey,
+      );
+      const toTokenAccount = await getOrCreateAssociatedTokenAccount(
+        this.connection,
+        wallet,
+        new PublicKey(tokenInfo.address),
+        toPublicKey,
+      );
+
+      const amountInSmallestUnit = amount * Math.pow(10, tokenInfo.decimals);
+
+      // 只创建包含核心指令的交易
+      const transaction = new Transaction().add(
+        createTransferInstruction(
+          fromTokenAccount.address,
+          toTokenAccount.address,
+          wallet.publicKey,
+          amountInSmallestUnit,
+        ),
+      );
+
+      try {
+        const result = await this.sendAndConfirmTransaction(transaction, [wallet], computeUnitsToUse, priorityFeePerCU);
+        signature = result?.signature;
+        if (signature) {
+          return { signature: signature, status: 1 };
+        } else {
+          return { signature: signature || '', status: 0, error: 'Transaction not confirmed' };
+        }
+      } catch (e: any) {
+        logger.error(`Solana SPL Transfer Error: ${e.message}`);
+        return { signature: signature || '', status: -1, error: e.message };
+      }
     }
   }
 }

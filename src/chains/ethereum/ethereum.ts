@@ -3,6 +3,8 @@ import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, eth
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
 
+import { TransferResponse } from '#src/wallet/schemas';
+
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
@@ -880,5 +882,61 @@ export class Ethereum {
         }
       }),
     );
+  }
+
+  /**
+   * Transfers tokens from a wallet to a destination address.
+   * This method handles both native ETH and ERC-20 token transfers.
+   * @param wallet The sender's Wallet instance.
+   * @param toAddress The recipient's public key address.
+   * @param token The symbol of the token to transfer (e.g., 'ETH', 'USDC').
+   * @param amount The amount of the token to transfer.
+   * @returns An object containing the transaction hash.
+   */
+  public async transfer(wallet: Wallet, toAddress: string, token: string, amount: number): Promise<TransferResponse> {
+    let tx: ContractTransaction | null = null;
+    try {
+      // Validate the recipient address
+      const validatedToAddress = Ethereum.validateAddress(toAddress);
+
+      if (token.toUpperCase() === this.nativeTokenSymbol) {
+        // --- Native ETH Transfer ---
+        logger.info(`Preparing to transfer ${amount} ${this.nativeTokenSymbol} from ${wallet.address} to ${toAddress}`);
+
+        const amountInWei = utils.parseEther(amount.toString());
+
+        tx = await wallet.sendTransaction({
+          to: validatedToAddress,
+          value: amountInWei,
+        });
+
+        logger.info(`Sent ${this.nativeTokenSymbol} transfer transaction: ${tx.hash}`);
+        const receipt = await tx.wait(1); // Wait for 1 confirmation
+
+        return { signature: receipt.transactionHash, status: 1 };
+      } else {
+        // --- ERC-20 Token Transfer ---
+        logger.info(`Preparing to transfer ${amount} ${token} from ${wallet.address} to ${toAddress}`);
+
+        const tokenInfo = this.getToken(token);
+        if (!tokenInfo) {
+          throw new Error(`Token ${token} not found in the token list.`);
+        }
+
+        const contract = this.getContract(tokenInfo.address, wallet);
+        const amountInSmallestUnit = utils.parseUnits(amount.toString(), tokenInfo.decimals);
+
+        tx = await contract.transfer(validatedToAddress, amountInSmallestUnit);
+        const receipt = await tx.wait(1); // Wait for 1 confirmation
+
+        return { signature: receipt.transactionHash, status: 1 };
+      }
+    } catch (e: any) {
+      logger.error(`Ethereum Transfer Error: ${e.message}`);
+      if (e.code === 'INSUFFICIENT_FUNDS') {
+        throw new Error('Insufficient funds for gas * price + value');
+      }
+      return { signature: tx?.hash || '', status: -1, error: e.message };
+    }
   }
 }

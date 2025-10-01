@@ -2,9 +2,12 @@ import * as crypto from 'crypto';
 
 import { CoinBalance, SuiClient, SuiTransactionBlockResponse } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { fromBase64, isValidSuiAddress } from '@mysten/sui/utils';
+import { Transaction, coinWithBalance } from '@mysten/sui/transactions';
+import { fromBase64, isValidSuiAddress, MIST_PER_SUI, SUI_DECIMALS } from '@mysten/sui/utils';
 import { TokenInfo } from '@solana/spl-token-registry';
 import fse from 'fs-extra';
+
+import { TransferResponse } from '#src/wallet/schemas';
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
@@ -17,6 +20,7 @@ export class Sui {
   private static instances: Record<string, Sui> = {};
   private _client: SuiClient;
   private _nativeToken: string;
+  public nativeTokenSymbol: string;
   private _chain: string;
   private _network: string;
   public config: SuiNetworkConfig;
@@ -35,6 +39,7 @@ export class Sui {
     this._client = new SuiClient({ url: this.config.rpcURL });
     this.rpcUrl = this.config.rpcURL;
     this._nativeToken = this.config.nativeCurrency;
+    this.nativeTokenSymbol = this.config.nativeCurrency;
   }
 
   public static async getInstance(network: string): Promise<Sui> {
@@ -101,9 +106,9 @@ export class Sui {
     return this._client;
   }
 
-  public get nativeTokenSymbol(): string {
-    return this._nativeToken;
-  }
+  // public get nativeTokenSymbol(): string {
+  //   return this._nativeToken;
+  // }
 
   public get chain(): string {
     return this._chain;
@@ -325,5 +330,69 @@ export class Sui {
 
     logger.debug('Secret decrypted successfully.');
     return decrypted.toString();
+  }
+
+  /**
+   * Transfers tokens from a wallet to a destination address.
+   * This method handles both native SUI and other coin transfers.
+   * @param wallet The sender's Ed25519Keypair.
+   * @param toAddress The recipient's public key address.
+   * @param token The symbol of the token to transfer (e.g., 'SUI', 'USDC').
+   * @param amount The amount of the token to transfer.
+   * @returns An object containing the transaction hash (digest).
+   */
+  public async transfer(
+    wallet: Ed25519Keypair,
+    toAddress: string,
+    token: string,
+    amount: number,
+  ): Promise<TransferResponse> {
+    const txb = new Transaction();
+    const fromAddress = wallet.getPublicKey().toSuiAddress();
+    txb.setSender(fromAddress);
+
+    if (token.toUpperCase() === this.nativeTokenSymbol) {
+      // --- Native SUI Transfer ---
+      logger.info(`Preparing to transfer ${amount} SUI from ${fromAddress} to ${toAddress}`);
+
+      const decimals = SUI_DECIMALS; // SUI has 9 decimals
+      const amountInMist = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+
+      // Use coinWithBalance intent for SUI transfer
+      const coin = coinWithBalance({ balance: amountInMist });
+      txb.transferObjects([coin], toAddress);
+    } else {
+      // --- Other Coin Transfer ---
+      logger.info(`Preparing to transfer ${amount} ${token} from ${fromAddress} to ${toAddress}`);
+
+      const tokenInfo = await this.getToken(token);
+      if (!tokenInfo) {
+        throw new Error(`Token ${token} not found in the token list.`);
+      }
+
+      const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, tokenInfo.decimals)));
+
+      // Use coinWithBalance intent for other coin types
+      const coin = coinWithBalance({ balance: amountInSmallestUnit, type: tokenInfo.address });
+      txb.transferObjects([coin], toAddress);
+    }
+
+    // Sign and execute the transaction
+    const exe_ret = await this.client.signAndExecuteTransaction({
+      signer: wallet,
+      transaction: txb,
+      options: {
+        showEffects: true,
+      },
+    });
+    logger.info(`exexute tx result: ${JSON.stringify(exe_ret, null, 2)}`);
+    // Wait for the transaction to be indexed by the node
+    const final_ret = await this.client.waitForTransaction({ digest: exe_ret.digest });
+    logger.info(`final tx result: ${JSON.stringify(final_ret, null, 2)}`);
+
+    const status = exe_ret.effects?.status.status === 'success' ? 1 : -1;
+    const error = exe_ret.effects?.status.error;
+
+    return { signature: exe_ret.digest, status: status, error: error };
   }
 }

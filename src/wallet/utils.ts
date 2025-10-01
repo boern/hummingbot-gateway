@@ -21,6 +21,8 @@ import {
   SignMessageRequest,
   SignMessageResponse,
   GetWalletResponse,
+  TransferRequest,
+  TransferResponse,
 } from './schemas';
 
 export const walletPath = './conf/wallets';
@@ -224,6 +226,73 @@ export async function signMessage(fastify: FastifyInstance, req: SignMessageRequ
     }
     throw fastify.httpErrors.internalServerError(`Failed to sign message: ${error.message}`);
   }
+}
+
+export async function transfer(fastify: FastifyInstance, req: TransferRequest): Promise<TransferResponse> {
+  logger.info(
+    `Initiating transfer of ${req.amount} ${req.token} from ${req.fromAddress} to ${req.toAddress} on ${req.chain}:${req.network}`,
+  );
+
+  // 1. Validate chain and get connection
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+  }
+  const safeNetwork = sanitizePathComponent(req.network);
+  const chainInstance = await getInitializedChain<Chain>(req.chain, safeNetwork);
+
+  // 2. Validate addresses and check if sender wallet exists
+  try {
+    if (chainInstance instanceof Ethereum) {
+      Ethereum.validateAddress(req.fromAddress);
+      Ethereum.validateAddress(req.toAddress);
+    } else if (chainInstance instanceof Solana) {
+      Solana.validateAddress(req.fromAddress);
+      Solana.validateAddress(req.toAddress);
+    } else if (chainInstance instanceof Sui) {
+      Sui.validateAddress(req.fromAddress);
+      Sui.validateAddress(req.toAddress);
+    }
+  } catch (e: any) {
+    throw fastify.httpErrors.badRequest(`Invalid address format: ${e.message}`);
+  }
+
+  const wallet = await (chainInstance as any).getWallet(req.fromAddress);
+  if (!wallet) {
+    throw fastify.httpErrors.notFound(`Sender wallet ${req.fromAddress} not found for chain ${req.chain}`);
+  }
+
+  // 3. Validate token exists on the gateway for this chain/network
+  const tokenInfo = chainInstance.getToken(req.token);
+  if (!tokenInfo) {
+    throw fastify.httpErrors.notFound(
+      `Token '${req.token}' not found on the token list for ${req.chain}:${req.network}.`,
+    );
+  }
+
+  // 4. Check sender's balance
+  logger.info(`Checking balance for ${req.fromAddress} of token ${req.token}`);
+  const balances = await chainInstance.getBalances(req.fromAddress, [req.token]);
+  const tokenBalance = balances[req.token];
+
+  if (tokenBalance === undefined || tokenBalance < req.amount) {
+    throw fastify.httpErrors.badRequest(
+      `Insufficient balance. Wallet has ${tokenBalance || 0} ${req.token}, but trying to send ${req.amount}.`,
+    );
+  }
+
+  // Also check native currency balance for gas fees, if not transferring the native token itself
+  const nativeCurrency = chainInstance.nativeTokenSymbol;
+  if (req.token !== nativeCurrency) {
+    const nativeBalances = await chainInstance.getBalances(req.fromAddress, [nativeCurrency]);
+    if (!nativeBalances[nativeCurrency] || nativeBalances[nativeCurrency] <= 0) {
+      throw fastify.httpErrors.badRequest(`Insufficient balance for gas fees. Wallet has no ${nativeCurrency}.`);
+    }
+  }
+
+  // 5. Execute transfer
+  logger.info('Balance sufficient. Executing transfer...');
+  const tx = await chainInstance.transfer(wallet, req.toAddress, req.token, req.amount);
+  return tx;
 }
 
 async function getDirectories(source: string): Promise<string[]> {

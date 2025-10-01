@@ -158,6 +158,45 @@ export const SetDefaultWalletResponseSchema = Type.Object({
   }),
 });
 
+export const TransferRequestSchema = Type.Object(
+  {
+    chain: Type.String({
+      description: 'Blockchain to perform the transfer on',
+      examples: ['solana', 'ethereum', 'sui'],
+    }),
+    network: Type.String({
+      description: 'The network to use (e.g., mainnet-beta, devnet, mainnet)',
+    }),
+    fromAddress: WalletAddressSchema,
+    toAddress: WalletAddressSchema,
+    token: Type.String({
+      description: 'Token symbol to transfer (e.g., SOL, USDC, ETH)',
+    }),
+    amount: Type.Number({
+      description: 'Amount of the token to transfer',
+      exclusiveMinimum: 0,
+    }),
+  },
+  { $id: 'TransferRequest' },
+);
+
+export const TransferResponseSchema = Type.Object(
+  {
+    signature: Type.String({
+      description: 'Transaction signature/hash of the transfer',
+    }),
+    status: Type.Number({
+      description: 'Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED',
+    }),
+    error: Type.Optional(
+      Type.String({
+        description: 'Optional error message if the transfer failed',
+      }),
+    ),
+  },
+  { $id: 'TransferResponse' },
+);
+
 // Export TypeScript types
 export type GetWalletsQuery = Static<typeof GetWalletsQuerySchema>;
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
@@ -176,3 +215,5 @@ export type ListHardwareWalletsResponse = Static<typeof ListHardwareWalletsRespo
 export type HardwareWalletInfo = Static<typeof HardwareWalletInfoSchema>;
 export type SetDefaultWalletRequest = Static<typeof SetDefaultWalletRequestSchema>;
 export type SetDefaultWalletResponse = Static<typeof SetDefaultWalletResponseSchema>;
+export type TransferRequest = Static<typeof TransferRequestSchema>;
+export type TransferResponse = Static<typeof TransferResponseSchema>;
