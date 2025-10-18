@@ -167,11 +167,11 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
           );
         }
       } catch (e) {
-        logger.error(`[Bluefin] Error in /open-position: ${e}`);
         if (e instanceof Error) {
-          logger.error(e.message);
+          logger.error(`[Bluefin] Error in /open-position: ${e.message}`, { stack: e.stack });
           throw fastify.httpErrors.internalServerError(e.message);
         }
+        logger.error(`[Bluefin] Error in /open-position: ${e}`);
         throw e;
       }
     },

@@ -160,7 +160,7 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
           logger.info(`[Bluefin] Execute swap response: ${JSON.stringify(response)}`);
           return response;
         } else if (tx.effects?.status.status === 'failure') {
-          logger.error(`Execute swap transaction failed: ${tx.effects.status.error}`);
+          logger.error(`[Bluefin] Execute swap transaction failed: ${tx.effects.status.error}`);
           throw fastify.httpErrors.internalServerError(
             `Transaction to execute swap failed: ${tx.effects.status.error}`,
           );
