@@ -124,9 +124,9 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
         logger.info(`[Bluefin] openPositionWithLiquidity transaction response: ${JSON.stringify(txResponse)}`);
         if (txResponse.effects?.status.status === 'success') {
           // Fetch transaction details to provide a more complete response
-          const txDetails = await sui.getTransactionBlock(txResponse.digest);
+          // const txDetails = await sui.getTransactionBlock(txResponse.digest);
 
-          const liquidityProvidedEvent = txDetails.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
+          const liquidityProvidedEvent = txResponse.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
             ?.parsedJson as any;
 
           const positionId = liquidityProvidedEvent?.position_id;
@@ -135,13 +135,13 @@ export const openPositionRoute = async (fastify: FastifyInstance) => {
             signature: txResponse.digest,
             status: 1, // CONFIRMED
             data: {
-              fee: new DecimalJS(txDetails.effects.gasUsed.computationCost)
-                .add(txDetails.effects.gasUsed.storageCost)
-                .sub(txDetails.effects.gasUsed.storageRebate)
+              fee: new DecimalJS(txResponse.effects.gasUsed.computationCost)
+                .add(txResponse.effects.gasUsed.storageCost)
+                .sub(txResponse.effects.gasUsed.storageRebate)
                 .div(1e9)
                 .toNumber(),
               positionAddress: positionId, // Sui model doesn't have explicit rent like Solana
-              positionRent: new DecimalJS(txDetails.effects.gasUsed.storageCost).div(1e9).toNumber(),
+              positionRent: new DecimalJS(txResponse.effects.gasUsed.storageCost).div(1e9).toNumber(),
               baseTokenAmountAdded: new Decimal(liquidityProvidedEvent.coin_a_amount)
                 .div(10 ** pool.coin_a.decimals)
                 .toNumber(),

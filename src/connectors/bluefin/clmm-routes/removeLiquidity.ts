@@ -85,10 +85,10 @@ export const removeLiquidityRoute = async (fastify: FastifyInstance) => {
         logger.info(`[Bluefin] removeLiquidity transaction response: ${JSON.stringify(txResponse)}`);
 
         if (txResponse.effects?.status.status === 'success') {
-          const txDetails = await sui.getTransactionBlock(txResponse.digest);
-          const fee = new Decimal(txDetails.effects.gasUsed.computationCost)
-            .add(txDetails.effects.gasUsed.storageCost)
-            .sub(txDetails.effects.gasUsed.storageRebate)
+          // const txDetails = await sui.getTransactionBlock(txResponse.digest);
+          const fee = new Decimal(txResponse.effects.gasUsed.computationCost)
+            .add(txResponse.effects.gasUsed.storageCost)
+            .sub(txResponse.effects.gasUsed.storageRebate)
             .div(1e9)
             .toNumber();
 

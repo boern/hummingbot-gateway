@@ -4,6 +4,7 @@ import { addLiquidityRoute } from './addLiquidity';
 import { closePositionRoute } from './closePosition';
 import { collectFeesRoute } from './collectFees';
 import { executeSwapRoute } from './executeSwap';
+import { getAccruedFeeAndRewardsRoute } from './getAccruedRewards';
 import { openPositionRoute } from './openPosition';
 import { poolInfoRoute } from './poolInfo';
 import { positionInfoRoute } from './positionInfo';
@@ -24,6 +25,7 @@ export async function bluefinCLMMRoutes(fastify: FastifyInstance) {
   fastify.register(removeLiquidityRoute);
   fastify.register(closePositionRoute);
   fastify.register(collectFeesRoute);
+  fastify.register(getAccruedFeeAndRewardsRoute);
 }
 
 export default bluefinCLMMRoutes;

@@ -75,7 +75,8 @@ export async function pollSuiTransaction(
       currentBlock: await sui.getCurrentBlockNumber(),
       signature,
       txBlock: null,
-      txStatus: -1, // FAILED
+      // txStatus: -1, // FAILED
+      txStatus: 0, // PENDING
       txData: null,
       fee: null,
       error: 'Transaction not found or invalid',

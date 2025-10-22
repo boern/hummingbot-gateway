@@ -435,3 +435,28 @@ export const BluefinCLMMCollectFeesRequest = Type.Object({
 });
 
 export type BluefinCLMMCollectFeesRequest = typeof BluefinCLMMCollectFeesRequest.static;
+
+export const BluefinCLMMAccruedRewardsRequest = Type.Object(
+  {
+    network: Type.Optional(
+      Type.String({
+        description: 'Sui network to use',
+        default: suiChainConfig.defaultNetwork,
+        enum: [...BluefinConfig.networks],
+      }),
+    ),
+    walletAddress: Type.String({ description: 'The address of the wallet.' }),
+    positionAddress: Type.String({ description: 'The address of the position.' }),
+  },
+  {
+    description: 'Request to get accrued rewards for a Bluefin CLMM position.',
+  },
+);
+
+export const AccruedFeeAndRewardInfoSchema = Type.Object({
+  symbol: Type.String(),
+  amount: Type.Number(),
+  address: Type.String(),
+});
+
+export const AccruedFeeAndRewardsResponse = Type.Array(AccruedFeeAndRewardInfoSchema);

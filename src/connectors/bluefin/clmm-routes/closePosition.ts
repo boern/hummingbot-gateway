@@ -79,15 +79,15 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
         logger.info(`[Bluefin] closePosition transaction response: ${JSON.stringify(txResponse)}`);
 
         if (txResponse.effects?.status.status === 'success') {
-          const txDetails = await sui.getTransactionBlock(txResponse.digest);
+          // const txDetails = await sui.getTransactionBlock(txResponse.digest);
 
-          const fee = new Decimal(txDetails.effects.gasUsed.computationCost)
-            .add(txDetails.effects.gasUsed.storageCost)
-            .sub(txDetails.effects.gasUsed.storageRebate)
+          const fee = new Decimal(txResponse.effects.gasUsed.computationCost)
+            .add(txResponse.effects.gasUsed.storageCost)
+            .sub(txResponse.effects.gasUsed.storageRebate)
             .div(1e9)
             .toNumber();
 
-          const rentRefunded = new Decimal(txDetails.effects.gasUsed.storageRebate).div(1e9).toNumber();
+          const rentRefunded = new Decimal(txResponse.effects.gasUsed.storageRebate).div(1e9).toNumber();
 
           const response = {
             signature: txResponse.digest,

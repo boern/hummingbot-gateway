@@ -111,15 +111,15 @@ export const addLiquidityRoute = async (fastify: FastifyInstance) => {
         const tx = await onChain.provideLiquidity(pool, positionAddress, liquidityParams);
         const txResponse = tx as SuiTransactionBlockResponse;
         if (txResponse.effects?.status.status === 'success') {
-          const txDetails = await sui.getTransactionBlock(txResponse.digest);
+          // const txDetails = await sui.getTransactionBlock(txResponse.digest);
 
-          const fee = new Decimal(txDetails.effects.gasUsed.computationCost)
-            .add(txDetails.effects.gasUsed.storageCost)
-            .sub(txDetails.effects.gasUsed.storageRebate)
+          const fee = new Decimal(txResponse.effects.gasUsed.computationCost)
+            .add(txResponse.effects.gasUsed.storageCost)
+            .sub(txResponse.effects.gasUsed.storageRebate)
             .div(1e9)
             .toNumber();
 
-          const liquidityProvidedEvent = txDetails.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
+          const liquidityProvidedEvent = txResponse.events.find((e) => e.type.endsWith('::events::LiquidityProvided'))
             ?.parsedJson as any;
 
           reply.send({
