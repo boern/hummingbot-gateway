@@ -170,11 +170,13 @@ export const executeSwapRoute = async (fastify: FastifyInstance) => {
           return { signature: tx.digest, status: 0 }; // PENDING
         }
       } catch (e) {
-        logger.error(`[Bluefin] Execute swap error: ${e.message}`, e);
         if (e instanceof Error) {
+          logger.error(`[Bluefin] Execute swap error: ${e.message}`, { stack: e.stack });
           throw fastify.httpErrors.internalServerError(`Execute swap failed: ${e.message}`);
         }
-        throw e;
+        const errorMessage = JSON.stringify(e, null, 2);
+        logger.error(`[Bluefin] An unexpected error occurred during execute-swap: ${errorMessage}`);
+        throw fastify.httpErrors.internalServerError(`An unexpected error occurred: ${errorMessage}`);
       }
     },
   );

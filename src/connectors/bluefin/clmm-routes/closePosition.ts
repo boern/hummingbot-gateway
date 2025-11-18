@@ -33,7 +33,7 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
         const bluefin = Bluefin.getInstance(network);
         const onChain = bluefin.onChain(keypair);
 
-        // First, get position details to find the pool it belongs to.
+        // 1. Get position details to find the pool it belongs to.
         const position = await bluefin.query.getPositionDetails(positionAddress);
         logger.info(`[Bluefin] Fetched position details for closing: ${JSON.stringify(position)}`);
         if (!position) {
@@ -61,18 +61,36 @@ export const closePositionRoute = async (fastify: FastifyInstance) => {
           .div(10 ** pool.coin_b.decimals)
           .toNumber();
 
-        // 2. Get accrued fees before collecting them
+        // 2. Get accrued fees and rewards before collecting them
         const accruedFees = await onChain.getAccruedFeeAndRewards(pool, positionAddress);
         logger.info(`[Bluefin] Fetched accrued fees for closing: ${JSON.stringify(accruedFees)}`);
-        const baseFeeAmountCollected = new Decimal(accruedFees.fee.coinA.toString())
-          .div(10 ** pool.coin_a.decimals)
-          .toNumber();
-        const quoteFeeAmountCollected = new Decimal(accruedFees.fee.coinB.toString())
-          .div(10 ** pool.coin_b.decimals)
-          .toNumber();
 
-        // This call will remove liquidity, collect fees, and close the position account.
-        logger.info(`[Bluefin] Calling onChain.closePosition for position: ${positionAddress}`);
+        // 3. Use a map to collect and merge fees and rewards by full address
+        const combined = new Map<string, Decimal>();
+
+        // Process fees
+        const feeTokens = [
+          { token: pool.coin_a, amount: accruedFees.fee.coinA },
+          { token: pool.coin_b, amount: accruedFees.fee.coinB },
+        ];
+
+        for (const { token, amount } of feeTokens) {
+          const currentAmount = combined.get(token.address) || new Decimal(0);
+          combined.set(token.address, currentAmount.add(new Decimal(amount.toString()).div(10 ** token.decimals)));
+        }
+
+        // Process rewards
+        accruedFees.rewards.forEach((reward) => {
+          // Ensure reward address has '0x' prefix
+          const fullAddress = reward.coinType.startsWith('0x') ? reward.coinType : `0x${reward.coinType}`;
+          const currentAmount = combined.get(fullAddress) || new Decimal(0);
+          combined.set(fullAddress, currentAmount.add(new Decimal(reward.coinAmount).div(10 ** reward.coinDecimals)));
+        });
+
+        const baseFeeAmountCollected = combined.get(pool.coin_a.address)?.toNumber() || 0;
+        const quoteFeeAmountCollected = combined.get(pool.coin_b.address)?.toNumber() || 0;
+
+        // 4. This call will remove liquidity, collect fees, and close the position account.
         const tx = await onChain.closePosition(pool, positionAddress);
 
         const txResponse = tx as SuiTransactionBlockResponse;
