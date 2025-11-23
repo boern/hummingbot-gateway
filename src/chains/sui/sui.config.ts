@@ -4,7 +4,7 @@ import { getAvailableSuiNetworks } from './sui.utils';
 
 export interface SuiNetworkConfig {
   rpcURL: string;
-  nativeCurrency: string;
+  nativeCurrencySymbol: string;
 }
 
 export interface SuiChainConfig {
@@ -19,7 +19,7 @@ export function getSuiNetworkConfig(network: string): SuiNetworkConfig {
   const namespaceId = `sui-${network}`;
   return {
     rpcURL: ConfigManagerV2.getInstance().get(namespaceId + '.rpcURL'),
-    nativeCurrency: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrency'),
+    nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
   };
 }
 

@@ -17,11 +17,11 @@
       "type": "string",
       "description": "RPC URL for the Sui network"
     },
-    "nativeCurrency": {
+    "nativeCurrencySymbol": {
       "type": "string",
       "description": "Native currency of the chain",
       "enum": ["SUI"]
     }
   },
-  "required": ["chain", "network", "rpcURL", "nativeCurrency"]
+  "required": ["chain", "network", "rpcURL", "nativeCurrencySymbol"]
 }

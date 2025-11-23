@@ -38,8 +38,8 @@ export class Sui {
     this.config = getSuiNetworkConfig(network);
     this._client = new SuiClient({ url: this.config.rpcURL });
     this.rpcUrl = this.config.rpcURL;
-    this._nativeToken = this.config.nativeCurrency;
-    this.nativeTokenSymbol = this.config.nativeCurrency;
+    this._nativeToken = this.config.nativeCurrencySymbol;
+    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
   }
 
   public static async getInstance(network: string): Promise<Sui> {
