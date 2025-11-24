@@ -5,16 +5,23 @@ import { getAvailableSolanaNetworks } from './solana.utils';
 export interface SolanaNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
+  swapProvider?: string;
   defaultComputeUnits: number;
   confirmRetryInterval: number;
   confirmRetryCount: number;
-  basePriorityFeePct: number;
+  heliusAPIKey: string;
+  useHeliusRestRPC: boolean;
+  useHeliusWebSocketRPC: boolean;
+  useHeliusSender: boolean;
+  heliusRegionCode: string;
   minPriorityFeePerCU: number;
+  jitoTipSOL: number;
 }
 
 export interface SolanaChainConfig {
   defaultNetwork: string;
   defaultWallet: string;
+  rpcProvider: string;
 }
 
 // Export available networks
@@ -25,11 +32,17 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   return {
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
     defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
-    basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
+    heliusAPIKey: ConfigManagerV2.getInstance().get(namespaceId + '.heliusAPIKey'),
+    useHeliusRestRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusRestRPC'),
+    useHeliusWebSocketRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusWebSocketRPC'),
+    useHeliusSender: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusSender'),
+    heliusRegionCode: ConfigManagerV2.getInstance().get(namespaceId + '.heliusRegionCode'),
     minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
+    jitoTipSOL: ConfigManagerV2.getInstance().get(namespaceId + '.jitoTipSOL'),
   };
 }
 
@@ -37,5 +50,6 @@ export function getSolanaChainConfig(): SolanaChainConfig {
   return {
     defaultNetwork: ConfigManagerV2.getInstance().get('solana.defaultNetwork'),
     defaultWallet: ConfigManagerV2.getInstance().get('solana.defaultWallet'),
+    rpcProvider: ConfigManagerV2.getInstance().get('solana.rpcProvider') || 'url',
   };
 }

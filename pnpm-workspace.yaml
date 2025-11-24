@@ -1,0 +1,14 @@
+onlyBuiltDependencies:
+  - '@firefly-exchange/library-sui'
+  - bigint-buffer
+  - bufferutil
+  - classic-level
+  - dtrace-provider
+  - esbuild
+  - keccak
+  - node-hid
+  - secp256k1
+  - unrs-resolver
+  - usb
+  - utf-8-validate
+  - yarn

@@ -21,6 +21,11 @@
       "type": "string",
       "description": "Native currency of the chain",
       "enum": ["SUI"]
+    },
+    "swapProvider": {
+      "type": "string",
+      "description": "Default swap router provider for this network (format: connector/type, e.g., jupiter/router)",
+      "default": "bluefin/router"
     }
   },
   "required": ["chain", "network", "rpcURL", "nativeCurrencySymbol"]

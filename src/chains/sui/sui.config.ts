@@ -5,11 +5,13 @@ import { getAvailableSuiNetworks } from './sui.utils';
 export interface SuiNetworkConfig {
   rpcURL: string;
   nativeCurrencySymbol: string;
+  swapProvider?: string;
 }
 
 export interface SuiChainConfig {
   defaultNetwork: string;
   defaultWallet: string;
+  rpcProvider: string;
 }
 
 // Export available networks
@@ -20,6 +22,7 @@ export function getSuiNetworkConfig(network: string): SuiNetworkConfig {
   return {
     rpcURL: ConfigManagerV2.getInstance().get(namespaceId + '.rpcURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
   };
 }
 
@@ -27,5 +30,6 @@ export function getSuiChainConfig(): SuiChainConfig {
   return {
     defaultNetwork: ConfigManagerV2.getInstance().get('sui.defaultNetwork'),
     defaultWallet: ConfigManagerV2.getInstance().get('sui.defaultWallet'),
+    rpcProvider: ConfigManagerV2.getInstance().get('sui.rpcProvider') || 'url',
   };
 }

@@ -73,10 +73,10 @@ export const BluefinCLMMGetPositionsOwnedRequest = Type.Object({
     description: 'Sui wallet address to check for positions',
     examples: ['0xa2d6fcd5ed2ae13fe527a96c96100120d519900599f33e38ee112d80e51f9269'],
   }),
-  poolAddress: Type.String({
-    description: 'Bluefin CLMM pool address to filter positions',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
+  // poolAddress: Type.String({
+  //   description: 'Bluefin CLMM pool address to filter positions',
+  //   examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+  // }),
 });
 
 export type BluefinCLMMGetPositionsOwnedRequest = typeof BluefinCLMMGetPositionsOwnedRequest.static;

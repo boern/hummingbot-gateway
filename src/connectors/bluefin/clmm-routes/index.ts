@@ -23,8 +23,8 @@ export async function bluefinCLMMRoutes(fastify: FastifyInstance) {
   fastify.register(openPositionRoute);
   fastify.register(addLiquidityRoute);
   fastify.register(removeLiquidityRoute);
-  fastify.register(closePositionRoute);
   fastify.register(collectFeesRoute);
+  fastify.register(closePositionRoute);
   fastify.register(getAccruedFeeAndRewardsRoute);
 }
 

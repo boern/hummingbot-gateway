@@ -15,7 +15,7 @@ import { RaydiumClmmClosePositionRequest } from '../schemas';
 
 import { removeLiquidity } from './removeLiquidity';
 
-async function closePosition(
+export async function closePosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
@@ -116,10 +116,13 @@ async function closePosition(
       wallet,
     )) as VersionedTransaction;
 
-    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
-      signedTransaction,
-      [], // No additional signers needed, already signed
-    );
+    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
+
+    if (!confirmed || !txData) {
+      throw _fastify.httpErrors.internalServerError('Transaction failed to confirm');
+    }
+
+    const fee = (txData.meta?.fee || 0) * (1 / Math.pow(10, 9)); // Convert lamports to SOL
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       'So11111111111111111111111111111111111111112',

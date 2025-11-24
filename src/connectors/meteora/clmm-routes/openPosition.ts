@@ -25,7 +25,7 @@ const OPEN_POSITION_ERROR_MESSAGE = (error: any) => `Failed to open position: ${
 const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
 
-async function openPosition(
+export async function openPosition(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
@@ -168,13 +168,11 @@ async function openPosition(
   logger.info('Transaction simulated successfully, sending to network...');
 
   // Send and confirm the ORIGINAL unsigned transaction
-  // sendAndConfirmTransaction will handle the signing
-  // Pass higher compute units for openPosition (simulation showed ~390k needed)
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
-    createPositionTx,
-    [wallet, newImbalancePosition],
-    500000, // computeUnits - higher limit for position creation
-  );
+  // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
+    wallet,
+    newImbalancePosition,
+  ]);
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {

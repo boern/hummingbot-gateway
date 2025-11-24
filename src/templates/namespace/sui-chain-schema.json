@@ -9,6 +9,12 @@
     "defaultWallet": {
       "type": "string",
       "description": "Default wallet address for examples and testing"
+    },
+    "rpcProvider": {
+      "type": "string",
+      "enum": ["url", "alchemy"],
+      "default": "url",
+      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'alchemy' for alchemy service across all networks"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

@@ -4,22 +4,28 @@ import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../
 import { logger } from '../../../services/logger';
 import { SuiStatusRequest } from '../schemas';
 import { Sui } from '../sui';
+import { getSuiChainConfig } from '../sui.config';
 
 export async function getSuiStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
     logger.info(`[Sui] Received /status request for network: ${network}`);
     const sui = await Sui.getInstance(network);
+    const suiConfig = getSuiChainConfig();
     const chain = 'sui';
     const rpcUrl = sui.rpcUrl;
+    const rpcProvider = suiConfig.rpcProvider || 'url';
     const nativeCurrency = sui.nativeTokenSymbol;
+    const swapProvider = sui.config.swapProvider || '';
     const currentBlockNumber = await sui.getCurrentBlockNumber();
 
     const response = {
       chain,
       network,
       rpcUrl,
+      rpcProvider,
       currentBlockNumber,
       nativeCurrency,
+      swapProvider,
     };
     logger.info(`[Sui] Responding to /status request: ${JSON.stringify(response)}`);
     return response;

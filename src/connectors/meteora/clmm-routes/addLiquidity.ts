@@ -23,7 +23,7 @@ const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: s
 
 const SOL_TRANSACTION_BUFFER = 0.01; // SOL buffer for transaction costs
 
-async function addLiquidity(
+export async function addLiquidity(
   fastify: FastifyInstance,
   network: string,
   address: string,
@@ -119,12 +119,8 @@ async function addLiquidity(
   logger.info('Transaction simulated successfully, sending to network...');
 
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  // Use higher compute units for addLiquidity operations
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    addLiquidityTx,
-    [wallet],
-    400000, // Higher compute units for add liquidity
-  );
+  // Transaction will automatically simulate to determine optimal compute units
+  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {

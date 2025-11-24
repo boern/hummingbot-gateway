@@ -2,3 +2,4 @@ chain: 'sui'
 network: 'mainnet'
 rpcURL: 'https://fullnode.mainnet.sui.io:443'
 nativeCurrencySymbol: 'SUI'
+swapProvider: bluefin/router
