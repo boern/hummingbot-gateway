@@ -6,15 +6,15 @@ WORKDIR /home/gateway
 
 # Create mount points
 RUN mkdir -p    /home/gateway/conf \
-                /home/gateway/conf/chains \
-                /home/gateway/conf/connectors \
-                /home/gateway/conf/namespace \
-                /home/gateway/conf/pools \
-                /home/gateway/conf/rpc \
-                /home/gateway/conf/tokens \
-                /home/gateway/conf/wallets \
-                /home/gateway/logs \
-                /home/gateway/certs
+    /home/gateway/conf/chains \
+    /home/gateway/conf/connectors \
+    /home/gateway/conf/namespace \
+    /home/gateway/conf/pools \
+    /home/gateway/conf/rpc \
+    /home/gateway/conf/tokens \
+    /home/gateway/conf/wallets \
+    /home/gateway/logs \
+    /home/gateway/certs
 
 # Install pnpm
 RUN npm install -g pnpm@latest
@@ -23,7 +23,7 @@ RUN npm install -g pnpm@latest
 COPY package.json pnpm-lock.yaml ./
 
 # Dockerfile author / maintainer
-LABEL maintainer="Michael Feng <mike@hummingbot.org>"
+LABEL maintainer="Ultrasset <ultrasset@gmail.com>"
 
 # Build arguments
 ARG BRANCH
